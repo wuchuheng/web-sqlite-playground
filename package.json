@@ -12,6 +12,7 @@
     "examples:simple-demo": "tsx ./scripts/http-server.ts --base-path ./ --url-path-name /examples/simpleDemo/index.html",
     "tmp": "tsx ./scripts/http-server.ts --base-path ./src --url-path-name /index.html",
     "dev": "vite",
+    "dev:watch": "tsc --watch & vite build --watch",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "release": "pnpm publish --access public"
