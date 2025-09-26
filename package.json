@@ -1,15 +1,26 @@
 {
-  "name": "web-sqlite-playground",
-  "version": "1.0.0",
+  "name": "@wuchuheng/web-sqlite",
+  "version": "1.1.9-beta14",
   "description": "",
-  "main": "index.js",
+  "type": "module",
+  "module": "./dist/index.es.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "test:api": "tsx ./scripts/http-server.ts --base-path ./ --url-path-name /tests/opfs-API-tests/index.html --port 8080",
     "examples:demo1": "tsx ./scripts/http-server.ts --base-path ./ --url-path-name /examples/demo/index.html",
     "test:opfs-api": "tsx ./scripts/http-server.ts --base-path ./ --url-path-name /tests/opfs-API-tests/index.html --port 8082",
     "examples:simple-demo": "tsx ./scripts/http-server.ts --base-path ./ --url-path-name /examples/simpleDemo/index.html",
-    "tmp": "tsx ./scripts/http-server.ts --base-path ./src --url-path-name /index.html"
+    "tmp": "tsx ./scripts/http-server.ts --base-path ./src --url-path-name /index.html",
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "release": "pnpm publish --access public"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.es.js"
+    }
   },
   "keywords": [],
   "author": "",
@@ -18,7 +29,10 @@
   "devDependencies": {
     "@types/node": "^24.5.2",
     "@wuchuheng/helper": "^1.2.11",
-    "tsx": "^4.20.6"
+    "tsx": "^4.20.6",
+    "typescript": "~5.8.3",
+    "vite": "^7.1.7",
+    "vite-plugin-dts": "^4.0.0"
   },
   "dependencies": {
     "commander": "^14.0.1"
