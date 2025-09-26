@@ -17,6 +17,7 @@ export const hello = async () => {
     arg1: number,
     arg2: number
   ) => number;
+  debugger;
 
   // Call the add function with example arguments
   const result = addFunction(5, 3);
