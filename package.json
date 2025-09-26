@@ -5,8 +5,11 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "test:api": "tsx ./scripts/http-server.ts --base-path ./ --url-path-name /tests/opfs-API-tests/index.html --port 8080",
     "examples:demo1": "tsx ./scripts/http-server.ts --base-path ./ --url-path-name /examples/demo/index.html",
-    "test:opfs-api": "tsx ./scripts/http-server.ts --base-path ./ --url-path-name /tests/opfs-API-tests/index.html --port 8081"
+    "test:opfs-api": "tsx ./scripts/http-server.ts --base-path ./ --url-path-name /tests/opfs-API-tests/index.html --port 8082",
+    "examples:simple-demo": "tsx ./scripts/http-server.ts --base-path ./ --url-path-name /examples/simpleDemo/index.html",
+    "tmp": "tsx ./scripts/http-server.ts --base-path ./src --url-path-name /index.html"
   },
   "keywords": [],
   "author": "",
