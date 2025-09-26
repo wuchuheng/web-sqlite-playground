@@ -1,1 +1,28 @@
-OPFS API tests
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon" />
+    <link rel="stylesheet" href="../../src/common/emscripten.css" />
+    <link rel="stylesheet" href="./css/opfs-tests.css" />
+    <title>sqlite3 OPFS API tests</title>
+  </head>
+  <body>
+    <main>
+      <header class="page-header">
+        <h1 id="color-target">sqlite3 OPFS API tests</h1>
+        <p class="subtitle">
+          Run the full Origin Private File System regression suite for the sqlite3 WASM build and
+          monitor log output in real time.
+        </p>
+      </header>
+      <label class="controls" for="cb-log-reverse">
+        <input type="checkbox" id="cb-log-reverse" />
+        <span>Show newest log entries first</span>
+      </label>
+      <div id="test-output" role="log" aria-live="polite"></div>
+    </main>
+    <script type="module" src="./js/main.js"></script>
+  </body>
+</html>
