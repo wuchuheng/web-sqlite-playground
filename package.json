@@ -22,6 +22,9 @@
       "import": "./dist/index.es.js"
     }
   },
+  "files": [
+    "dist"
+  ],
   "keywords": [],
   "author": "",
   "license": "ISC",
