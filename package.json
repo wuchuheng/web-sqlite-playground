@@ -1,6 +1,6 @@
 {
   "name": "@wuchuheng/web-sqlite",
-  "version": "1.1.9-beta14",
+  "version": "1.1.9-beta15",
   "description": "",
   "type": "module",
   "module": "./dist/index.es.js",
