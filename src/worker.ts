@@ -54,12 +54,12 @@ self.onmessage = async (event) => {
   };
 
   // Use the same pattern as sqlite3.mjs: both env and wasi_snapshot_preview1 use the same imports
-  const imports = {
+  const imports = {};
+
+  const { instance } = await WebAssembly.instantiate(sqliteWasmBytes, {
     env: wasmImports,
     wasi_snapshot_preview1: wasmImports,
-  };
-
-  const { instance } = await WebAssembly.instantiate(sqliteWasmBytes, imports);
+  });
   console.log("SQLite WASM Module instantiated:", instance);
 
   // Print all exported functions
