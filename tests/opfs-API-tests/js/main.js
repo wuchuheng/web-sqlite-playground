@@ -1,4 +1,4 @@
-import sqlite3InitModule from "../../../src/jswasm/sqlite3.mjs";
+import sqlite3InitModule from "../../../src/jswasm/sqlite3/index.mjs";
 import { initUi } from "./ui.js";
 import { createTestHarness } from "./test-harness.js";
 import { registerOpfsTests, setSqliteReferences } from "./opfs-tests.js";
@@ -19,12 +19,16 @@ const main = async () => {
   harness.T.assert(!!sqlite3.util);
   ui.log("Done initializing WASM/JS bits. Running tests...");
   sqlite3.config.warn(
-    "Installing sqlite3 bits as global S for local dev/test purposes.",
+    "Installing sqlite3 bits as global S for local dev/test purposes."
   );
   globalThis.S = sqlite3;
   setSqliteReferences(sqlite3);
   const { capi, wasm } = sqlite3;
-  ui.log("sqlite3 version:", capi.sqlite3_libversion(), capi.sqlite3_sourceid());
+  ui.log(
+    "sqlite3 version:",
+    capi.sqlite3_libversion(),
+    capi.sqlite3_sourceid()
+  );
   if (wasm.bigIntEnabled) {
     ui.log("BigInt/int64 support is enabled.");
   } else {

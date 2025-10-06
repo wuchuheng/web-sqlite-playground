@@ -163,7 +163,7 @@ deactivate Promiser
 ### 3.1 Basic Module Initialization
 
 ```js
-import sqlite3InitModule from "./src/jswasm/sqlite3.mjs";
+import sqlite3InitModule from "./src/jswasm/sqlite3/index.mjs";
 
 // Initialize the SQLite3 module with configuration options
 const sqlite3 = await sqlite3InitModule({

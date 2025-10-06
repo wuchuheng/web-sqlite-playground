@@ -1,4 +1,4 @@
-import sqlite3InitModule from "../../src/jswasm/sqlite3.mjs";
+import sqlite3InitModule from "../../src/jswasm/sqlite3/index.mjs";
 
 self.onmessage = async function (event) {
   console.log(event);

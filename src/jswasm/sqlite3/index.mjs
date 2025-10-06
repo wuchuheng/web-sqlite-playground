@@ -318,14 +318,14 @@ var sqlite3InitModule = (() => {
 
         function findWasmBinary() {
             if (Module["locateFile"]) {
-                var f = "sqlite3.wasm";
+                var f = "../sqlite3.wasm";
                 if (!isDataURI(f)) {
                     return locateFile(f);
                 }
                 return f;
             }
 
-            return new URL("sqlite3.wasm", import.meta.url).href;
+            return new URL("../sqlite3.wasm", import.meta.url).href;
         }
 
         var wasmBinaryFile;
@@ -14744,7 +14744,8 @@ var sqlite3InitModule = (() => {
                     });
                     return thePromise;
                 };
-                installOpfsVfs.defaultProxyUri = "sqlite3-opfs-async-proxy.js";
+                installOpfsVfs.defaultProxyUri =
+                    "../sqlite3-opfs-async-proxy.js";
                 globalThis.sqlite3ApiBootstrap.initializersAsync.push(
                     async (sqlite3) => {
                         try {
