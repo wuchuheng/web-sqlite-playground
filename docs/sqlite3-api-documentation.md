@@ -1793,171 +1793,192 @@ This section provides a comprehensive overview of the current SQLite3 WebAssembl
 ### ✅ **Fully Implemented Categories (100% Coverage)**
 
 #### **Database Connection Management**
-- ✅ `sqlite3_open` / `sqlite3_open_v2` - All variants including flags and VFS
-- ✅ `sqlite3_open16` - UTF-16 filename support  
-- ✅ `sqlite3_close` / `sqlite3_close_v2` - Both connection close variants
-- ✅ All database information functions (`sqlite3_db_filename`, `sqlite3_db_readonly`, etc.)
 
-#### **Prepared Statement Operations** 
-- ✅ `sqlite3_prepare*` - All variants including UTF-8, UTF-16, v2, v3 with flags
-- ✅ `sqlite3_step` / `sqlite3_reset` / `sqlite3_finalize` - Complete lifecycle
-- ✅ Statement introspection (`sqlite3_sql`, `sqlite3_expanded_sql`, etc.)
+-   ✅ `sqlite3_open` / `sqlite3_open_v2` - All variants including flags and VFS
+-   ✅ `sqlite3_open16` - UTF-16 filename support
+-   ✅ `sqlite3_close` / `sqlite3_close_v2` - Both connection close variants
+-   ✅ All database information functions (`sqlite3_db_filename`, `sqlite3_db_readonly`, etc.)
+
+#### **Prepared Statement Operations**
+
+-   ✅ `sqlite3_prepare*` - All variants including UTF-8, UTF-16, v2, v3 with flags
+-   ✅ `sqlite3_step` / `sqlite3_reset` / `sqlite3_finalize` - Complete lifecycle
+-   ✅ Statement introspection (`sqlite3_sql`, `sqlite3_expanded_sql`, etc.)
 
 #### **Parameter Binding (13 functions)**
-- ✅ `sqlite3_bind_null`, `sqlite3_bind_int`, `sqlite3_bind_int64`
-- ✅ `sqlite3_bind_double`, `sqlite3_bind_text`, `sqlite3_bind_blob`
-- ✅ `sqlite3_bind_text16`, `sqlite3_bind_text64`, `sqlite3_bind_blob64`
-- ✅ `sqlite3_bind_value`, `sqlite3_bind_pointer`
-- ✅ `sqlite3_bind_zeroblob`, `sqlite3_bind_zeroblob64`
-- ✅ Parameter introspection functions (count, name, index)
-- ✅ `sqlite3_clear_bindings`
+
+-   ✅ `sqlite3_bind_null`, `sqlite3_bind_int`, `sqlite3_bind_int64`
+-   ✅ `sqlite3_bind_double`, `sqlite3_bind_text`, `sqlite3_bind_blob`
+-   ✅ `sqlite3_bind_text16`, `sqlite3_bind_text64`, `sqlite3_bind_blob64`
+-   ✅ `sqlite3_bind_value`, `sqlite3_bind_pointer`
+-   ✅ `sqlite3_bind_zeroblob`, `sqlite3_bind_zeroblob64`
+-   ✅ Parameter introspection functions (count, name, index)
+-   ✅ `sqlite3_clear_bindings`
 
 #### **Column Access (15+ functions)**
-- ✅ `sqlite3_column_*` - All data type accessors (int, text, blob, etc.)
-- ✅ UTF-16 variants (`sqlite3_column_text16`, `sqlite3_column_bytes16`)
-- ✅ Metadata functions (name, type, decltype, database/table/origin names)
-- ✅ Both UTF-8 and UTF-16 metadata variants
-- ✅ `sqlite3_column_count`, `sqlite3_data_count`
+
+-   ✅ `sqlite3_column_*` - All data type accessors (int, text, blob, etc.)
+-   ✅ UTF-16 variants (`sqlite3_column_text16`, `sqlite3_column_bytes16`)
+-   ✅ Metadata functions (name, type, decltype, database/table/origin names)
+-   ✅ Both UTF-8 and UTF-16 metadata variants
+-   ✅ `sqlite3_column_count`, `sqlite3_data_count`
 
 #### **Value Operations (19+ functions)**
-- ✅ `sqlite3_value_*` - All data extractors for custom functions
-- ✅ UTF-16 variants (`sqlite3_value_text16`, `sqlite3_value_text16le/be`)
-- ✅ Advanced functions (`sqlite3_value_encoding`, `sqlite3_value_nochange`, etc.)
-- ✅ `sqlite3_result_*` - All result setters for custom functions  
-- ✅ UTF-16 result variants and 64-bit versions
+
+-   ✅ `sqlite3_value_*` - All data extractors for custom functions
+-   ✅ UTF-16 variants (`sqlite3_value_text16`, `sqlite3_value_text16le/be`)
+-   ✅ Advanced functions (`sqlite3_value_encoding`, `sqlite3_value_nochange`, etc.)
+-   ✅ `sqlite3_result_*` - All result setters for custom functions
+-   ✅ UTF-16 result variants and 64-bit versions
 
 #### **Memory Management (7 functions)**
-- ✅ `sqlite3_malloc` / `sqlite3_malloc64` - All allocation variants
-- ✅ `sqlite3_realloc` / `sqlite3_realloc64` - Resize operations
-- ✅ `sqlite3_free` - Memory deallocation
-- ✅ `sqlite3_msize` - Get allocation size
-- ✅ Memory statistics (`sqlite3_memory_used`, `sqlite3_memory_highwater`)
+
+-   ✅ `sqlite3_malloc` / `sqlite3_malloc64` - All allocation variants
+-   ✅ `sqlite3_realloc` / `sqlite3_realloc64` - Resize operations
+-   ✅ `sqlite3_free` - Memory deallocation
+-   ✅ `sqlite3_msize` - Get allocation size
+-   ✅ Memory statistics (`sqlite3_memory_used`, `sqlite3_memory_highwater`)
 
 #### **Error Handling (5 functions)**
-- ✅ `sqlite3_errcode` / `sqlite3_extended_errcode` - Error codes
-- ✅ `sqlite3_errmsg` / `sqlite3_errmsg16` - Error messages
-- ✅ `sqlite3_errstr` - Error code to string conversion
-- ✅ `sqlite3_error_offset` - SQL error position
+
+-   ✅ `sqlite3_errcode` / `sqlite3_extended_errcode` - Error codes
+-   ✅ `sqlite3_errmsg` / `sqlite3_errmsg16` - Error messages
+-   ✅ `sqlite3_errstr` - Error code to string conversion
+-   ✅ `sqlite3_error_offset` - SQL error position
 
 #### **Database Information (8+ functions)**
-- ✅ `sqlite3_changes` / `sqlite3_changes64` - Row modification counts
-- ✅ `sqlite3_total_changes` / `sqlite3_total_changes64` - Total changes  
-- ✅ `sqlite3_last_insert_rowid` - Most recent insert ID
-- ✅ Version functions (`sqlite3_libversion`, `sqlite3_libversion_number`)
+
+-   ✅ `sqlite3_changes` / `sqlite3_changes64` - Row modification counts
+-   ✅ `sqlite3_total_changes` / `sqlite3_total_changes64` - Total changes
+-   ✅ `sqlite3_last_insert_rowid` - Most recent insert ID
+-   ✅ Version functions (`sqlite3_libversion`, `sqlite3_libversion_number`)
 
 ### ✅ **Recently Added Categories (100% Coverage)**
 
 #### **Backup Operations (5 functions)**
-- ✅ `sqlite3_backup_init` - Initialize backup operation
-- ✅ `sqlite3_backup_step` - Copy database pages  
-- ✅ `sqlite3_backup_finish` - Complete backup operation
-- ✅ `sqlite3_backup_remaining` - Pages remaining to copy
-- ✅ `sqlite3_backup_pagecount` - Total pages in source database
+
+-   ✅ `sqlite3_backup_init` - Initialize backup operation
+-   ✅ `sqlite3_backup_step` - Copy database pages
+-   ✅ `sqlite3_backup_finish` - Complete backup operation
+-   ✅ `sqlite3_backup_remaining` - Pages remaining to copy
+-   ✅ `sqlite3_backup_pagecount` - Total pages in source database
 
 #### **Serialization Operations (2 functions)**
-- ✅ `sqlite3_serialize` - Serialize database to memory
-- ✅ `sqlite3_deserialize` - Deserialize database from memory
+
+-   ✅ `sqlite3_serialize` - Serialize database to memory
+-   ✅ `sqlite3_deserialize` - Deserialize database from memory
 
 #### **Configuration Functions (4 functions)**
-- ✅ `sqlite3_config` - Global library configuration
-- ✅ `sqlite3_db_config` - Database-specific configuration
-- ✅ `sqlite3_initialize` - Initialize SQLite library
-- ✅ `sqlite3_shutdown` - Shutdown SQLite library
+
+-   ✅ `sqlite3_config` - Global library configuration
+-   ✅ `sqlite3_db_config` - Database-specific configuration
+-   ✅ `sqlite3_initialize` - Initialize SQLite library
+-   ✅ `sqlite3_shutdown` - Shutdown SQLite library
 
 ### 🟡 **Partially Implemented Categories**
 
 #### **Custom Functions (70% Coverage)**
-- ✅ `sqlite3_create_function` / `sqlite3_create_function_v2` - Function registration
-- ✅ `sqlite3_create_window_function` - Window function support
-- ✅ Context functions (`sqlite3_context_db_handle`, `sqlite3_user_data`)
-- ⚠️ **Missing:** Some aggregate helper functions
+
+-   ✅ `sqlite3_create_function` / `sqlite3_create_function_v2` - Function registration
+-   ✅ `sqlite3_create_window_function` - Window function support
+-   ✅ Context functions (`sqlite3_context_db_handle`, `sqlite3_user_data`)
+-   ⚠️ **Missing:** Some aggregate helper functions
 
 #### **Database Limits and Status (80% Coverage)**
-- ✅ `sqlite3_limit` - Set/get database limits
-- ✅ `sqlite3_status` / `sqlite3_status64` - Library statistics
-- ✅ `sqlite3_db_status` - Database-specific statistics  
-- ⚠️ **Missing:** Some specialized status codes
+
+-   ✅ `sqlite3_limit` - Set/get database limits
+-   ✅ `sqlite3_status` / `sqlite3_status64` - Library statistics
+-   ✅ `sqlite3_db_status` - Database-specific statistics
+-   ⚠️ **Missing:** Some specialized status codes
 
 #### **Transaction Control (60% Coverage)**
-- ✅ `sqlite3_get_autocommit` - Check autocommit mode
-- ⚠️ **Missing:** `sqlite3_commit_hook`, `sqlite3_rollback_hook`
-- ⚠️ **Missing:** Savepoint functions
+
+-   ✅ `sqlite3_get_autocommit` - Check autocommit mode
+-   ⚠️ **Missing:** `sqlite3_commit_hook`, `sqlite3_rollback_hook`
+-   ⚠️ **Missing:** Savepoint functions
 
 ### 🔴 **Not Yet Implemented Categories**
 
 #### **Virtual Table API (0% Coverage)**
-- ❌ `sqlite3_create_module` / `sqlite3_create_module_v2`
-- ❌ `sqlite3_declare_vtab`
-- ❌ Virtual table cursor operations
 
-#### **Extension Loading (0% Coverage)**  
-- ❌ `sqlite3_load_extension`
-- ❌ `sqlite3_enable_load_extension`
-- ❌ Extension entry point functions
+-   ❌ `sqlite3_create_module` / `sqlite3_create_module_v2`
+-   ❌ `sqlite3_declare_vtab`
+-   ❌ Virtual table cursor operations
+
+#### **Extension Loading (0% Coverage)**
+
+-   ❌ `sqlite3_load_extension`
+-   ❌ `sqlite3_enable_load_extension`
+-   ❌ Extension entry point functions
 
 #### **Advanced Threading/Mutex (20% Coverage)**
-- ❌ `sqlite3_mutex_*` functions (alloc, enter, leave, free)
-- ❌ Thread-safety configuration
-- ⚠️ **Partial:** Basic threading constants
+
+-   ❌ `sqlite3_mutex_*` functions (alloc, enter, leave, free)
+-   ❌ Thread-safety configuration
+-   ⚠️ **Partial:** Basic threading constants
 
 #### **Full-Text Search (FTS) (0% Coverage)**
-- ❌ FTS-specific functions and constants
-- ❌ `fts3_tokenizer` functions
+
+-   ❌ FTS-specific functions and constants
+-   ❌ `fts3_tokenizer` functions
 
 #### **JSON Extension (0% Coverage)**
-- ❌ JSON1 extension functions
-- ❌ JSON-specific constants
+
+-   ❌ JSON1 extension functions
+-   ❌ JSON-specific constants
 
 ### 📊 **Overall Coverage Statistics**
 
-| Category | Functions Available | Functions Implemented | Coverage |
-|----------|-------------------|---------------------|----------|
-| **Core Database Operations** | 25 | 25 | 100% ✅ |
-| **Statement Operations** | 30 | 30 | 100% ✅ |
-| **Parameter Binding** | 13 | 13 | 100% ✅ |
-| **Column Access** | 16 | 16 | 100% ✅ |
-| **Value Operations** | 20 | 20 | 100% ✅ |
-| **Memory Management** | 7 | 7 | 100% ✅ |
-| **Error Handling** | 5 | 5 | 100% ✅ |
-| **Backup & Serialization** | 7 | 7 | 100% ✅ |
-| **Configuration** | 15 | 4 | 27% ⚠️ |
-| **Custom Functions** | 20 | 14 | 70% ⚠️ |
-| **Utility Functions** | 25 | 15 | 60% ⚠️ |
-| **Virtual Tables** | 15 | 0 | 0% ❌ |
-| **Extension Loading** | 5 | 0 | 0% ❌ |
-| **Threading/Mutex** | 12 | 2 | 17% ❌ |
-| **Advanced Features** | 30 | 5 | 17% ❌ |
+| Category                     | Functions Available | Functions Implemented | Coverage |
+| ---------------------------- | ------------------- | --------------------- | -------- |
+| **Core Database Operations** | 25                  | 25                    | 100% ✅  |
+| **Statement Operations**     | 30                  | 30                    | 100% ✅  |
+| **Parameter Binding**        | 13                  | 13                    | 100% ✅  |
+| **Column Access**            | 16                  | 16                    | 100% ✅  |
+| **Value Operations**         | 20                  | 20                    | 100% ✅  |
+| **Memory Management**        | 7                   | 7                     | 100% ✅  |
+| **Error Handling**           | 5                   | 5                     | 100% ✅  |
+| **Backup & Serialization**   | 7                   | 7                     | 100% ✅  |
+| **Configuration**            | 15                  | 4                     | 27% ⚠️   |
+| **Custom Functions**         | 20                  | 14                    | 70% ⚠️   |
+| **Utility Functions**        | 25                  | 15                    | 60% ⚠️   |
+| **Virtual Tables**           | 15                  | 0                     | 0% ❌    |
+| **Extension Loading**        | 5                   | 0                     | 0% ❌    |
+| **Threading/Mutex**          | 12                  | 2                     | 17% ❌   |
+| **Advanced Features**        | 30                  | 5                     | 17% ❌   |
 
 ### **Total Coverage: ~145 of ~170 core functions = 85% ✅**
 
 ### 🎯 **Recommended Next Implementation Priorities**
 
 1. **High Priority - Missing Core Functions:**
-   - Transaction hooks (`sqlite3_commit_hook`, `sqlite3_rollback_hook`)
-   - Savepoint functions (`sqlite3_savepoint`, `sqlite3_release_savepoint`) 
-   - More configuration options and status codes
+
+    - Transaction hooks (`sqlite3_commit_hook`, `sqlite3_rollback_hook`)
+    - Savepoint functions (`sqlite3_savepoint`, `sqlite3_release_savepoint`)
+    - More configuration options and status codes
 
 2. **Medium Priority - Advanced Features:**
-   - Virtual table creation (basic support)
-   - Extension loading mechanisms
-   - Advanced mutex operations
+
+    - Virtual table creation (basic support)
+    - Extension loading mechanisms
+    - Advanced mutex operations
 
 3. **Low Priority - Specialized APIs:**
-   - Full FTS3/FTS5 support
-   - JSON1 extension functions
-   - Advanced VFS operations
+    - Full FTS3/FTS5 support
+    - JSON1 extension functions
+    - Advanced VFS operations
 
 ### 🔧 **Constants Coverage**
 
 The constants implementation in `constants.ts` includes:
 
-- ✅ **Result Codes:** All primary + 50+ extended result codes
-- ✅ **Data Types:** Complete SQLite data type constants  
-- ✅ **Open Flags:** All database open flags and combinations
-- ✅ **Text Encodings:** UTF-8, UTF-16 variants and alignment flags
-- ✅ **Limits:** All SQLite limit categories
-- ✅ **Configuration:** Core config options (partial coverage)
-- ⚠️ **Missing:** Some specialized constants for FTS, JSON, advanced features
+-   ✅ **Result Codes:** All primary + 50+ extended result codes
+-   ✅ **Data Types:** Complete SQLite data type constants
+-   ✅ **Open Flags:** All database open flags and combinations
+-   ✅ **Text Encodings:** UTF-8, UTF-16 variants and alignment flags
+-   ✅ **Limits:** All SQLite limit categories
+-   ✅ **Configuration:** Core config options (partial coverage)
+-   ⚠️ **Missing:** Some specialized constants for FTS, JSON, advanced features
 
 **Estimated Constants Coverage: ~300 of ~400 total = 75% ✅**
 
