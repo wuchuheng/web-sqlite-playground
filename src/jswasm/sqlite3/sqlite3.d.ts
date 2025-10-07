@@ -52,174 +52,48 @@
 // BASIC VALUE TYPES
 // ============================================================================
 
-/** SQLite value types - union of all possible SQLite column values */
-export type SQLiteValue =
-  | string
-  | number
-  | bigint
-  | Uint8Array
-  | ArrayBuffer
-  | boolean
-  | null
-  | undefined;
+// Import shared base types to avoid circular dependencies
+import type {
+  SQLiteValue,
+  WasmPtr,
+  WasmPtr64,
+  SQLite3Db,
+  SQLite3Stmt,
+  SQLite3Value,
+  SQLite3Context,
+  SQLite3Backup,
+  HeapView,
+  SQLiteResultCode,
+  SQLiteDataType,
+  SQLiteOpenFlags,
+  SQLiteInt64,
+  SQLiteInt64OrBigInt,
+} from "./types/base-types";
+
+// Re-export for external consumers
+export type {
+  SQLiteValue,
+  WasmPtr,
+  WasmPtr64,
+  SQLite3Db,
+  SQLite3Stmt,
+  SQLite3Value,
+  SQLite3Context,
+  SQLite3Backup,
+  HeapView,
+  SQLiteResultCode,
+  SQLiteDataType,
+  SQLiteOpenFlags,
+  SQLiteInt64,
+  SQLiteInt64OrBigInt,
+} from "./types/base-types";
 
 // Import module configuration types
 import type { SQLite3InitModuleConfig } from "./types/module-config";
-import type { WasmPtr, WasmPtr64, SQLite3Module } from "./types/wasi";
+import type { SQLite3Module } from "./types/wasi";
 
-/** SQLite3 object handles (based on actual C pointer types) */
-export type SQLite3Db = number; // sqlite3*
-export type SQLite3Stmt = number; // sqlite3_stmt*
-export type SQLite3Value = number; // sqlite3_value*
-export type SQLite3Context = number; // sqlite3_context*
-export type SQLite3Backup = number; // sqlite3_backup*
-
-/** Heap view types for WebAssembly memory access */
-export type HeapView =
-  | Int8Array
-  | Int16Array
-  | Int32Array
-  | Uint8Array
-  | Uint16Array
-  | Uint32Array
-  | Float32Array
-  | Float64Array
-  | BigInt64Array
-  | BigUint64Array;
-
-/**
- * SQLite result codes from the SQLite C API
- *
- * These codes indicate the success or failure of SQLite operations. The most common codes are:
- * - SQLITE_OK (0): Operation successful
- * - SQLITE_ROW (100): Query has another row ready
- * - SQLITE_DONE (101): Query has finished executing
- * - SQLITE_ERROR (1): General SQL error or missing database
- * - SQLITE_BUSY (5): Database file is locked
- * - SQLITE_READONLY (8): Attempt to write a readonly database
- *
- * @example
- * ```typescript
- * const result = sqlite3_step(stmt);
- * if (result === SQLITE_ROW) {
- *   // Process row data
- * } else if (result === SQLITE_DONE) {
- *   // Query completed
- * } else if (result !== SQLITE_OK) {
- *   console.error('SQLite error:', sqlite3_errmsg(db));
- * }
- * ```
- */
-export type SQLiteResultCode =
-  | 0 /* SQLITE_OK */
-  | 1 /* SQLITE_ERROR */
-  | 2 /* SQLITE_INTERNAL */
-  | 3 /* SQLITE_PERM */
-  | 4 /* SQLITE_ABORT */
-  | 5 /* SQLITE_BUSY */
-  | 6 /* SQLITE_LOCKED */
-  | 7 /* SQLITE_NOMEM */
-  | 8 /* SQLITE_READONLY */
-  | 9 /* SQLITE_INTERRUPT */
-  | 10 /* SQLITE_IOERR */
-  | 11 /* SQLITE_CORRUPT */
-  | 12 /* SQLITE_NOTFOUND */
-  | 13 /* SQLITE_FULL */
-  | 14 /* SQLITE_CANTOPEN */
-  | 15 /* SQLITE_PROTOCOL */
-  | 16 /* SQLITE_EMPTY */
-  | 17 /* SQLITE_SCHEMA */
-  | 18 /* SQLITE_TOOBIG */
-  | 19 /* SQLITE_CONSTRAINT */
-  | 20 /* SQLITE_MISMATCH */
-  | 21 /* SQLITE_MISUSE */
-  | 22 /* SQLITE_NOLFS */
-  | 23 /* SQLITE_AUTH */
-  | 24 /* SQLITE_FORMAT */
-  | 25 /* SQLITE_RANGE */
-  | 26 /* SQLITE_NOTADB */
-  | 27 /* SQLITE_NOTICE */
-  | 28 /* SQLITE_WARNING */
-  | 100 /* SQLITE_ROW */
-  | 101 /* SQLITE_DONE */;
-
-/**
- * SQLite data types for column type information
- *
- * These values are returned by sqlite3_column_type() to indicate the storage class
- * of a value in the database. SQLite uses dynamic typing, so the declared type
- * of a column is only a hint - the actual storage class is determined at runtime.
- *
- * - SQLITE_INTEGER (1): Signed integer values (stored as 1, 2, 3, 4, 6, or 8 bytes)
- * - SQLITE_FLOAT (2): Floating point values (8-byte IEEE floating point)
- * - SQLITE_TEXT (3): Text strings (stored using database encoding)
- * - SQLITE_BLOB (4): Binary Large Objects (stored exactly as provided)
- * - SQLITE_NULL (5): NULL value
- *
- * @example
- * ```typescript
- * const columnType = sqlite3_column_type(stmt, 0);
- * switch (columnType) {
- *   case SQLITE_INTEGER:
- *     const value = sqlite3_column_int(stmt, 0);
- *     break;
- *   case SQLITE_TEXT:
- *     const text = sqlite3_column_text(stmt, 0);
- *     break;
- *   case SQLITE_NULL:
- *     // Handle NULL value
- *     break;
- * }
- * ```
- */
-export type SQLiteDataType =
-  | 1 /* SQLITE_INTEGER */
-  | 2 /* SQLITE_FLOAT */
-  | 3 /* SQLITE_TEXT */
-  | 4 /* SQLITE_BLOB */
-  | 5 /* SQLITE_NULL */;
-
-/**
- * SQLite open flags for database connection configuration
- *
- * These flags control how SQLite databases are opened and accessed. They can be
- * combined using bitwise OR to specify multiple options.
- *
- * - SQLITE_OPEN_READONLY (0x00000001): Open database for read-only access
- * - SQLITE_OPEN_READWRITE (0x00000002): Open database for read/write access
- * - SQLITE_OPEN_CREATE (0x00000004): Create database if it doesn't exist
- * - SQLITE_OPEN_DELETEONCLOSE (0x00000008): Delete file when closed (VFS only)
- * - SQLITE_OPEN_EXCLUSIVE (0x00000010): Reserve file for exclusive access
- * - SQLITE_OPEN_AUTOPROXY (0x00000020): VFS is an automatic proxy for another VFS
- *
- * @example
- * ```typescript
- * // Open database for read/write access, create if doesn't exist
- * const flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
- * const result = sqlite3_open_v2("mydb.sqlite", flags, null);
- * ```
- */
-export type SQLiteOpenFlags =
-  | 0x00000001 /* SQLITE_OPEN_READONLY */
-  | 0x00000002 /* SQLITE_OPEN_READWRITE */
-  | 0x00000004 /* SQLITE_OPEN_CREATE */
-  | 0x00000008 /* SQLITE_OPEN_DELETEONCLOSE */
-  | 0x00000010 /* SQLITE_OPEN_EXCLUSIVE */
-  | 0x00000020 /* SQLITE_OPEN_AUTOPROXY */
-  | 0x00000040 /* SQLITE_OPEN_URI */
-  | 0x00000080 /* SQLITE_OPEN_MEMORY */
-  | 0x00000100 /* SQLITE_OPEN_MAIN_DB */
-  | 0x00000200 /* SQLITE_OPEN_TEMP_DB */
-  | 0x00000400 /* SQLITE_OPEN_TRANSIENT_DB */
-  | 0x00000800 /* SQLITE_OPEN_MAIN_JOURNAL */
-  | 0x00001000 /* SQLITE_OPEN_TEMP_JOURNAL */
-  | 0x00002000 /* SQLITE_OPEN_SUBJOURNAL */
-  | 0x00004000 /* SQLITE_OPEN_SUPER_JOURNAL */
-  | 0x00008000 /* SQLITE_OPEN_NOMUTEX */
-  | 0x00010000 /* SQLITE_OPEN_FULLMUTEX */
-  | 0x00020000 /* SQLITE_OPEN_SHAREDCACHE */
-  | 0x00040000 /* SQLITE_OPEN_PRIVATECACHE */
-  | 0x00080000 /* SQLITE_OPEN_WAL */;
+// Import and re-export constants
+export * from "./constants";
 
 // ============================================================================
 // CONFIGURATION AND OPTIONS INTERFACES
@@ -454,11 +328,14 @@ export interface ExecOptions {
    * Called for each row in the result set. Return false to stop processing
    * rows, return true or undefined to continue processing.
    *
-   * @param row - Current row data
+   * @param row - Current row data (format depends on rowMode setting)
    * @param stmt - Statement instance for advanced operations
    * @returns Continue processing flag
    */
-  callback?: (row: unknown, stmt: Statement) => boolean | void;
+  callback?: (
+    row: Record<string, SQLiteValue> | SQLiteValue[] | SQLiteValue,
+    stmt: Statement
+  ) => boolean | void;
 
   /**
    * Return value format
@@ -491,8 +368,9 @@ export interface ExecOptions {
    *
    * Optional array to populate with result rows instead of creating a new array.
    * Useful for memory optimization when processing many queries.
+   * Type depends on rowMode setting.
    */
-  resultRows?: unknown[];
+  resultRows?: (Record<string, SQLiteValue> | SQLiteValue[] | SQLiteValue)[];
 
   /**
    * Array to store SQL statements
@@ -510,6 +388,22 @@ export interface ExecOptions {
    */
   columnNames?: string[];
 }
+
+/**
+ * Result type for Database.exec() method
+ *
+ * The return type depends on the returnValue option in ExecOptions:
+ * - 'resultRows': Array of result rows (objects, arrays, or values based on rowMode)
+ * - 'saveSql': Array of SQL statements that were executed
+ * - 'this': The database instance itself (for method chaining)
+ */
+export type ExecResult =
+  | SQLiteValue[][] // resultRows with rowMode='array'
+  | Record<string, SQLiteValue>[] // resultRows with rowMode='object'
+  | SQLiteValue[] // resultRows when single column selected
+  | string[] // saveSql return value
+  | Database // 'this' return value
+  | undefined; // For statements that don't return data
 
 /** Parameters for binding to prepared statements */
 export type BindParameters =
@@ -578,17 +472,18 @@ export interface Database {
    * Get the number of rows affected by the most recent SQL statement
    *
    * @param total - If true, returns the total number of changes since the database connection opened
-   * @param sixtyFour - If true, returns a 64-bit integer value
+   * @param sixtyFour - If true, returns a 64-bit integer value (when bigIntEnabled is true)
    * @returns Number of rows affected by the last statement
    *
    * @example
    * ```typescript
    * db.exec('INSERT INTO users (name) VALUES (?)', ['Alice']);
-   * const changes = db.changes(); // Returns 1
-   * console.log(`${changes} row(s) inserted`);
+   * const changes = db.changes(); // Returns number of rows inserted
+   * const totalChanges = db.changes(true); // Returns total changes for this connection
+   * console.log(`${changes} row(s) inserted, ${totalChanges} total changes`);
    * ```
    */
-  changes(total?: boolean, sixtyFour?: boolean): number;
+  changes(total?: boolean, sixtyFour?: boolean): SQLiteInt64OrBigInt;
 
   /**
    * Get the filename associated with a database connection
@@ -662,7 +557,7 @@ export interface Database {
    * ], ['Bob', 'Charlie']);
    * ```
    */
-  exec(options: ExecOptions | string, ...args: unknown[]): unknown;
+  exec(options: ExecOptions | string, ...args: SQLiteValue[]): ExecResult;
 
   /**
    * Create a custom SQL function that can be called from SQL statements
@@ -860,7 +755,7 @@ export interface Database {
   /**
    * Get the row ID of the most recent successful INSERT
    *
-   * @param sixtyFour - If true, returns a 64-bit integer value
+   * @param sixtyFour - If true, returns a 64-bit integer value (when bigIntEnabled is true)
    * @returns The row ID of the last inserted row
    *
    * @example
@@ -870,7 +765,7 @@ export interface Database {
    * console.log(`New user inserted with ID: ${rowId}`);
    * ```
    */
-  lastInsertRowId(sixtyFour?: boolean): number | bigint;
+  lastInsertRowId(sixtyFour?: boolean): SQLiteInt64OrBigInt;
   /** Get database file size */
   dbSize(): number;
   /** Get database filename */
@@ -995,8 +890,8 @@ export interface Statement {
   /**
    * Get a column value from the current result row
    *
-   * @param column - Column index (0-based) or array of column indices
-   * @returns The column value (type depends on SQLite data type)
+   * @param column - Column index (0-based), column name, or array of column indices
+   * @returns The column value (SQLite value type) or array of values if column is an array
    *
    * @example
    * ```typescript
@@ -1007,7 +902,12 @@ export interface Statement {
    * }
    * ```
    */
-  get(column?: number | string[]): unknown;
+  get(column?: number | string): SQLiteValue;
+  get(column: string[]): SQLiteValue[];
+  get(column: number[]): SQLiteValue[];
+  get(
+    column?: number | string | string[] | number[]
+  ): SQLiteValue | SQLiteValue[];
 
   /**
    * Get all column names from the result set
@@ -1132,7 +1032,9 @@ export interface Statement {
    * console.log(results);
    * ```
    */
-  exec(options?: { returnValue?: "resultRows" | "saveSql" | "this" }): unknown;
+  exec(options?: {
+    returnValue?: "resultRows" | "saveSql" | "this";
+  }): ExecResult;
 
   /**
    * Get the native WebAssembly pointer to the statement
@@ -1370,24 +1272,26 @@ export type FunctionSignature = string;
 
 /** WebAssembly module types (based on source analysis) */
 export interface WasmExports {
-  [key: string]: Function;
   memory: WebAssembly.Memory;
-  [exportName: string]: unknown;
+  table?: WebAssembly.Table;
+  [name: string]: WebAssembly.ExportValue | undefined;
+}
+
+export interface WasmImportModule {
+  memory?: WebAssembly.Memory;
+  table?: WebAssembly.Table;
+  [name: string]: WebAssembly.ImportValue | undefined;
 }
 
 export interface WasmImports {
-  env: {
-    [key: string]: Function;
-    memory?: WebAssembly.Memory;
-  };
-  wasi_snapshot_preview1?: {
-    [key: string]: Function;
-  };
+  env: WasmImportModule;
+  wasi_snapshot_preview1?: WasmImportModule;
+  [moduleName: string]: WasmImportModule | undefined;
 }
 
 /** WASM utility target interface (based on source) */
 export interface WasmUtilTarget {
-  module: unknown;
+  module: WebAssembly.Module;
   instance: WebAssembly.Instance;
   memory: WebAssembly.Memory;
   alloc?: WasmAllocFunc;
@@ -1494,7 +1398,7 @@ export interface VFSInterface {
 export type SQLite3FuncCallback = (
   pCtx: SQLite3Context,
   argc: number,
-  argv: number
+  argv: WasmPtr
 ) => void;
 
 /**
@@ -1509,7 +1413,7 @@ export type SQLite3FuncCallback = (
 export type SQLite3StepCallback = (
   pCtx: SQLite3Context,
   argc: number,
-  argv: number
+  argv: WasmPtr
 ) => void;
 
 /**
@@ -1571,7 +1475,7 @@ export type SQLite3ValueCallback = (pCtx: SQLite3Context) => void;
 export type SQLite3InverseCallback = (
   pCtx: SQLite3Context,
   argc: number,
-  argv: number
+  argv: WasmPtr
 ) => void;
 
 /**
@@ -1586,6 +1490,19 @@ export type SQLite3InverseCallback = (
 export type SQLite3BusyHandlerCallback = (
   pArg: WasmPtr,
   count: number
+) => number;
+
+/**
+ * SQLite exec row callback (sqlite3_callback)
+ *
+ * Called for each row produced by sqlite3_exec when a callback pointer is supplied.
+ * Values and column names are provided as pointers to arrays of UTF-8 strings.
+ */
+export type SQLite3ExecCallback = (
+  pArg: WasmPtr,
+  columnCount: number,
+  columnValues: WasmPtr,
+  columnNames: WasmPtr
 ) => number;
 
 /**
@@ -1614,10 +1531,10 @@ export type SQLite3ProgressHandlerCallback = (pArg: WasmPtr) => number;
 export type SQLite3AuthorizerCallback = (
   pArg: WasmPtr,
   actionCode: number,
-  param1: string,
-  param2: string,
-  dbName: string,
-  triggerName: string
+  param1: WasmPtr,
+  param2: WasmPtr,
+  dbName: WasmPtr,
+  triggerName: WasmPtr
 ) => number;
 
 /**
@@ -1680,6 +1597,15 @@ export interface SQLiteFunctionCallbacks {
 // ============================================================================
 
 /**
+ * Options bag accepted by SQLite-related error constructors. Mirrors the optional
+ * `cause` parameter supported by the JavaScript Error constructor.
+ */
+export interface SQLiteErrorOptions {
+  cause?: unknown;
+  [key: string]: unknown;
+}
+
+/**
  * SQLite3 error class for database operation failures
  *
  * This error is thrown when SQLite operations fail due to SQL syntax errors,
@@ -1691,13 +1617,13 @@ export interface SQLiteFunctionCallbacks {
  *   db.exec('INVALID SQL');
  * } catch (error) {
  *   if (error instanceof SQLite3Error) {
- *     console.log('SQLite error:', error.result);
+ *     console.log('SQLite error:', error.resultCode);
  *     console.log('Message:', error.message);
  *   }
  * }
  * ```
  */
-export interface SQLite3Error extends Error {
+export declare class SQLite3Error extends Error {
   name: "SQLite3Error";
 
   /**
@@ -1708,20 +1634,97 @@ export interface SQLite3Error extends Error {
    * - SQLITE_CONSTRAINT: Constraint violation
    * - SQLITE_CORRUPT: Database corruption
    */
-  result?: SQLiteResultCode;
+  resultCode: SQLiteResultCode;
 
   /**
-   * Human-readable error message
-   */
-  message: string;
-
-  /**
-   * Static method to throw an error immediately
+   * Create a new SQLite3 error
    *
-   * @param args - Arguments to format the error message
+   * @param message - Error message describing what went wrong
+   * @param resultCode - SQLite result code (defaults to SQLITE_ERROR)
+   * @param options - Optional error options including cause
+   *
+   * @example
+   * ```typescript
+   * // Simple message
+   * throw new SQLite3Error("SQL syntax error");
+   *
+   * // With result code
+   * throw new SQLite3Error("Constraint violation", SQLITE_CONSTRAINT);
+   *
+   * // With options and cause
+   * throw new SQLite3Error("Database corrupted", SQLITE_CORRUPT, {
+   *   cause: originalError
+   * });
+   * ```
+   */
+  constructor(
+    message: string,
+    resultCode?: SQLiteResultCode,
+    options?: SQLiteErrorOptions
+  );
+
+  /**
+   * Create a new SQLite3 error with just a result code
+   *
+   * @param resultCode - SQLite result code
+   * @param options - Optional error options including cause
+   */
+  constructor(resultCode: SQLiteResultCode, options?: SQLiteErrorOptions);
+
+  /**
+   * Implementation signature (not for direct use)
+   * @internal
+   */
+  constructor(
+    messageOrResultCode: string | SQLiteResultCode,
+    resultCodeOrOptions?: SQLiteResultCode | SQLiteErrorOptions,
+    options?: SQLiteErrorOptions
+  );
+
+  /**
+   * Static helper that creates and immediately throws a new SQLite3 error
+   *
+   * @param message - Error message describing what went wrong
+   * @param resultCode - SQLite result code (defaults to SQLITE_ERROR)
+   * @param options - Optional error options including cause
+   * @returns Never (always throws)
+   *
+   * @example
+   * ```typescript
+   * // Throw with message
+   * SQLite3Error.toss("Invalid SQL syntax");
+   *
+   * // Throw with result code
+   * SQLite3Error.toss("Constraint violation", SQLITE_CONSTRAINT);
+   * ```
+   */
+  static toss(
+    message: string,
+    resultCode?: SQLiteResultCode,
+    options?: SQLiteErrorOptions
+  ): never;
+
+  /**
+   * Static helper that throws a new SQLite3 error with just a result code
+   *
+   * @param resultCode - SQLite result code
+   * @param options - Optional error options including cause
    * @returns Never (always throws)
    */
-  static toss(...args: unknown[]): never;
+  static toss(
+    resultCode: SQLiteResultCode,
+    options?: SQLiteErrorOptions
+  ): never;
+
+  /**
+   * Implementation signature (not for direct use)
+   * @internal
+   */
+  static toss(
+    messageOrResultCode: string | SQLiteResultCode,
+    resultCodeOrOptions?: SQLiteResultCode | SQLiteErrorOptions,
+    options?: SQLiteErrorOptions
+  ): never;
 }
 
 /**
@@ -1737,31 +1740,64 @@ export interface SQLite3Error extends Error {
  *   const ptr = module._malloc(largeSize);
  * } catch (error) {
  *   if (error instanceof WasmAllocError) {
- *     console.error('Memory allocation failed:', error.message);
+ *     console.error('Memory allocation failed:', error.resultCode);
  *   }
  * }
  * ```
  */
-export interface WasmAllocError extends Error {
+export declare class WasmAllocError extends Error {
   name: "WasmAllocError";
 
   /**
-   * Allocation result/error code
+   * Allocation result/error code (typically SQLITE_NOMEM)
    */
-  result?: number;
+  resultCode: SQLiteResultCode;
 
   /**
-   * Human-readable error message
-   */
-  message: string;
-
-  /**
-   * Static method to throw an error immediately
+   * Create a new WebAssembly allocation error
    *
-   * @param args - Arguments to format the error message
-   * @returns Never (always throws)
+   * @param message - Error message describing the allocation failure
+   * @param resultCode - SQLite result code (defaults to SQLITE_NOMEM)
+   * @param options - Optional error options including cause
+   *
+   * @example
+   * ```typescript
+   * // Simple allocation error
+   * throw new WasmAllocError("Failed to allocate 1024 bytes");
+   *
+   * // With custom result code
+   * throw new WasmAllocError("Memory limit exceeded", SQLITE_NOMEM);
+   *
+   * // With cause
+   * throw new WasmAllocError("Allocation failed", SQLITE_NOMEM, {
+   *   cause: originalError
+   * });
+   * ```
    */
-  static toss(...args: unknown[]): never;
+  constructor(
+    message?: string,
+    resultCode?: SQLiteResultCode,
+    options?: SQLiteErrorOptions
+  );
+
+  /**
+   * Static helper that creates and immediately throws a new allocation error
+   *
+   * @param message - Error message describing the allocation failure
+   * @param resultCode - SQLite result code (defaults to SQLITE_NOMEM)
+   * @param options - Optional error options including cause
+   * @returns Never (always throws)
+   *
+   * @example
+   * ```typescript
+   * WasmAllocError.toss("Cannot allocate memory for database");
+   * ```
+   */
+  static toss(
+    message?: string,
+    resultCode?: SQLiteResultCode,
+    options?: SQLiteErrorOptions
+  ): never;
 }
 
 /**
@@ -1781,7 +1817,7 @@ export interface WasmAllocError extends Error {
  * }
  * ```
  */
-export interface ErrnoError extends Error {
+export declare class ErrnoError extends Error {
   name: "ErrnoError";
 
   /**
@@ -1795,9 +1831,7 @@ export interface ErrnoError extends Error {
   errno: number;
 
   /**
-   * Create a new file system error
-   *
-   * @param errno - POSIX error code
+   * Create a new file system error.
    */
   constructor(errno: number);
 }
@@ -1961,7 +1995,7 @@ export interface FSDevices {
   };
 }
 
-declare interface SQLite3InitModuleResult {
+export interface SQLite3InitModuleResult {
   /** Promise then method */
   then: <T>(
     onFulfilled: (module: SQLite3Module) => T | Promise<T>,
@@ -1971,19 +2005,19 @@ declare interface SQLite3InitModuleResult {
   ready: Promise<SQLite3Module>;
 }
 
-declare interface SQLite3InitModuleFunction {
+export interface SQLite3InitModuleFunction {
   (moduleConfig?: SQLite3InitModuleConfig): SQLite3InitModuleResult;
   ready: Promise<SQLite3Module>;
 }
 
 // Main export function
-declare const sqlite3InitModule: SQLite3InitModuleFunction;
+export declare const sqlite3InitModule: SQLite3InitModuleFunction;
 
 // Default export
 export default sqlite3InitModule;
 
 // Type definitions for file system operations
-declare interface FSStream {
+export interface FSStream {
   fd: number;
   flags: number;
   path: string;
@@ -1996,7 +2030,7 @@ declare interface FSStream {
   ungotten: number[];
 }
 
-declare interface FSNode {
+export interface FSNode {
   parent: FSNode;
   mount: MountPoint;
   mounted: MountPoint | null;
@@ -2014,7 +2048,7 @@ declare interface FSNode {
   isDevice: boolean;
 }
 
-declare interface FS {
+export interface FS {
   root: FSNode;
   mounts: MountPoint[];
   devices: FSDevices;
@@ -2123,7 +2157,7 @@ declare interface FS {
     canRead?: boolean,
     canWrite?: boolean
   ) => string;
-  forceLoadFile: (obj: unknown) => void;
+  forceLoadFile: (obj: FSNode | { url: string; [key: string]: any }) => void;
   createLazyFile: (
     parent: string | FSNode,
     name: string,
@@ -2134,7 +2168,7 @@ declare interface FS {
 }
 
 // Type definitions for TTY operations
-declare interface TTYStream {
+export interface TTYStream {
   /** Input buffer */
   input: number[];
   /** Output buffer */
@@ -2150,7 +2184,7 @@ declare interface TTYStream {
   };
 }
 
-declare interface TTY {
+export interface TTY {
   /** Array of TTY streams */
   ttys: TTYStream[];
   /** Initialize TTY */
@@ -2213,7 +2247,7 @@ declare interface TTY {
 }
 
 // Type definitions for memory operations (based on actual module analysis)
-declare interface MemoryOperations {
+export interface MemoryOperations {
   getValue: (
     ptr: WasmPtr,
     type?: "i8" | "i16" | "i32" | "i64" | "float" | "double" | "*"
@@ -2236,7 +2270,7 @@ declare interface MemoryOperations {
  * Function type for allocating memory in the WebAssembly heap.
  *
  * @param nBytes - Number of bytes to allocate
- * @returns Pointer to allocated memory, or null if allocation failed
+ * @returns Pointer to allocated memory (>0), or 0 if allocation failed
  *
  * @example
  * ```typescript
@@ -2270,7 +2304,7 @@ export type WasmDeallocFunc = (ptr: WasmPtr) => void;
  *
  * @param ptr - Pointer to previously allocated memory
  * @param nBytes - New size in bytes
- * @returns Pointer to reallocated memory, or null if reallocation failed
+ * @returns Pointer to reallocated memory (>0), or 0 if reallocation failed
  *
  * @example
  * ```typescript
@@ -2349,7 +2383,7 @@ export type TypedArrayToJsFunc = (
 export type JsToTypedArrayFunc = (array: ArrayBufferView) => WasmPtr;
 
 // Type definitions for UTF8 operations (based on actual module analysis)
-declare interface UTF8Operations {
+export interface UTF8Operations {
   stringToUTF8Array: (
     str: string,
     heap: Uint8Array | Int8Array,
@@ -2371,7 +2405,7 @@ declare interface UTF8Operations {
 }
 
 // Type definitions for SQLite3 API wrapper (corrected based on actual module analysis)
-declare interface SQLite3API {
+export interface SQLite3API {
   // NOTE: This is a high-level wrapper interface - the actual module exports low-level C API bindings
   // The real SQLite3 functions are available through the SQLite3Module interface with accurate signatures
   version: string;
@@ -2396,7 +2430,7 @@ declare interface SQLite3API {
   columnCount: (stmt: Statement) => number;
   columnName: (stmt: Statement, index: number) => string;
   columnType: (stmt: Statement, index: number) => SQLiteDataType;
-  lastInsertRowId: (db: Database) => number; // Corrected: uses number, not bigint (based on actual module analysis)
+  lastInsertRowId: (db: Database) => SQLiteInt64OrBigInt;
   changes: (db: Database) => number;
   totalChanges: (db: Database) => number;
   errorMessage: (db: Database) => string;
@@ -2431,105 +2465,3 @@ declare const ENVIRONMENT_IS_WEB: boolean;
 declare const ENVIRONMENT_IS_WORKER: boolean;
 declare const ENVIRONMENT_IS_NODE: boolean;
 declare const ENVIRONMENT_IS_SHELL: boolean;
-
-// Global module reference (corrected based on actual module structure)
-// The actual module exports sqlite3InitModule as a function, not a global Module object
-declare const sqlite3InitModule: SQLite3InitModuleFunction;
-export default sqlite3InitModule; // Based on line 15910: export default sqlite3InitModule;
-
-// Module instance reference (for use after initialization)
-declare const Module: SQLite3Module; // Available after sqlite3InitModule() resolves
-
-// Export all types
-export type {
-  // Basic value types
-  SQLiteValue,
-  SQLiteResultCode,
-  SQLiteDataType,
-  SQLiteOpenFlags,
-  WasmPtr,
-  WasmPtr64,
-  SQLite3Db,
-  SQLite3Stmt,
-  SQLite3Value,
-  SQLite3Context,
-  SQLite3Backup,
-  HeapView,
-
-  // Configuration and options
-  SQLite3ApiConfig,
-  CreateFunctionOptions,
-  ExecOptions,
-  BindParameters,
-
-  // Core database and statement interfaces
-  Database,
-  Statement,
-
-  // WebAssembly and memory management
-  WasmMemoryInterface,
-  TypeConverters,
-  WasmAllocFunc,
-  WasmDeallocFunc,
-  WasmReallocFunc,
-  GetValueFunc,
-  SetValueFunc,
-  CStringToJsFunc,
-  JStringToCStringFunc,
-  TypedArrayToJsFunc,
-  JsToTypedArrayFunc,
-  ArgAdapterFunc,
-  ResultAdapterFunc,
-  AbstractArgAdapter,
-  XWrapResultType,
-  XWrapArgType,
-  XWrapFunction,
-  FunctionTable,
-  FunctionEntry,
-  FunctionSignature,
-  WasmExports,
-  WasmImports,
-  WasmUtilTarget,
-  VFSHandle,
-  FileHandle,
-  OpenFlags,
-  FileMode,
-  FileType,
-  OPFSDir,
-  PersistenceType,
-
-  // VFS and file system
-  VFSInterface,
-
-  // Callbacks
-  SQLite3FuncCallback,
-  SQLite3StepCallback,
-  SQLite3FinalCallback,
-  SQLite3DestroyCallback,
-  SQLite3CompareCallback,
-  SQLite3ValueCallback,
-  SQLite3InverseCallback,
-  SQLite3BusyHandlerCallback,
-  SQLite3ProgressHandlerCallback,
-  SQLite3AuthorizerCallback,
-  SQLiteFunctionCallbacks,
-
-  // Error classes
-  SQLite3Error,
-  WasmAllocError,
-  ErrnoError,
-
-  // Module interfaces
-  SQLite3Module,
-  SQLite3InitModuleConfig,
-  SQLite3InitModuleResult,
-  SQLite3InitModuleFunction,
-  FSStream,
-  FSNode,
-  FS,
-  TTYStream,
-  TTY,
-  MemoryOperations,
-  UTF8Operations,
-  SQLite3API,
-};

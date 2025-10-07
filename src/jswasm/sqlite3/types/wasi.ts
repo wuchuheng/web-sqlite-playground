@@ -1,19 +1,286 @@
 import type {
-  Statement,
-  SQLite3BusyHandlerCallback,
   SQLiteOpenFlags,
   SQLiteResultCode,
   SQLite3Stmt,
   SQLiteDataType,
   SQLite3Value,
   SQLite3Db,
-  Database,
-  VFSInterface,
-  WasmMemoryInterface,
-} from "../sqlite3.d";
-/** WebAssembly pointer types (based on ptrIR and ptrSizeof from source) */
-export type WasmPtr = number; // 32-bit pointer
-export type WasmPtr64 = bigint; // 64-bit pointer when BigInt enabled
+  WasmPtr,
+  AllocPtr,
+  SQLite3File,
+  SQLiteAccessFlag,
+  SQLiteLockLevel,
+  SQLiteSyncFlag,
+  SQLiteInt64,
+  SQLiteValue,
+} from "./base-types";
+
+// Forward declarations for types that will be defined in the main sqlite3.d.ts
+export interface Statement {
+  // This will be properly defined in sqlite3.d.ts
+  finalize(): number;
+  reset(): Statement;
+  step(): boolean;
+  bind(
+    params: Record<string, SQLiteValue> | SQLiteValue[] | SQLiteValue
+  ): Statement;
+  get(
+    column?: number | string | string[] | number[]
+  ): SQLiteValue | SQLiteValue[];
+  // Add minimal interface needed for wasi.ts
+}
+
+export interface Database {
+  // This will be properly defined in sqlite3.d.ts
+  isOpen(): boolean;
+  close(): void;
+  // Add minimal interface needed for wasi.ts
+}
+
+/**
+ * SQLite Virtual File System (VFS) Interface
+ *
+ * The VFS interface provides an abstraction layer for file system operations.
+ * It allows SQLite to work with different storage backends including
+ * traditional file systems, in-memory storage, and custom implementations.
+ *
+ * This interface mirrors the sqlite3_vfs structure from the SQLite C API,
+ * adapted for WebAssembly usage with pointer-based parameters.
+ *
+ * @see https://www.sqlite.org/c3ref/vfs.html
+ */
+export interface VFSInterface {
+  /**
+   * Version number of this VFS implementation
+   * Should be 1, 2, or 3 depending on features supported
+   */
+  iVersion: number;
+
+  /**
+   * Size of the subclassed sqlite3_file structure
+   * SQLite will allocate this much memory for file objects
+   */
+  szOsFile: number;
+
+  /**
+   * Maximum pathname length supported by this VFS
+   * SQLite will allocate mxPathname+1 bytes for path buffers
+   */
+  mxPathname: number;
+
+  /**
+   * Next VFS in the linked list (managed by SQLite)
+   * Set to null for most implementations
+   */
+  pNext: WasmPtr | null;
+
+  /**
+   * Name of this VFS implementation
+   * Must be a unique string identifier
+   */
+  zName: string;
+
+  /**
+   * Application data pointer
+   * Available for VFS implementation use
+   */
+  pAppData: WasmPtr | null;
+
+  // ===== CORE VFS METHODS =====
+
+  /**
+   * Open a file
+   *
+   * @param zName - Pointer to filename in UTF-8 (null for temporary file)
+   * @param pFile - Pointer to sqlite3_file structure to initialize
+   * @param flags - Combination of SQLITE_OPEN_* flags
+   * @param pOutFlags - Pointer to receive actual flags used
+   * @returns SQLite result code
+   */
+  xOpen: (
+    zName: WasmPtr | null,
+    pFile: SQLite3File,
+    flags: SQLiteOpenFlags,
+    pOutFlags: WasmPtr
+  ) => SQLiteResultCode;
+
+  /**
+   * Delete a file
+   *
+   * @param zName - Pointer to filename in UTF-8
+   * @param syncDir - If true, sync directory changes to disk
+   * @returns SQLite result code
+   */
+  xDelete: (zName: WasmPtr, syncDir: number) => SQLiteResultCode;
+
+  /**
+   * Check file access permissions
+   *
+   * @param zName - Pointer to filename in UTF-8
+   * @param flags - SQLITE_ACCESS_* flag specifying test type
+   * @param pResOut - Pointer to receive result (0 or non-zero)
+   * @returns SQLite result code
+   */
+  xAccess: (
+    zName: WasmPtr,
+    flags: SQLiteAccessFlag,
+    pResOut: WasmPtr
+  ) => SQLiteResultCode;
+
+  /**
+   * Convert relative path to full pathname
+   *
+   * @param zName - Pointer to relative path in UTF-8
+   * @param nOut - Size of output buffer
+   * @param zOut - Pointer to output buffer for full path
+   * @returns SQLite result code
+   */
+  xFullPathname: (
+    zName: WasmPtr,
+    nOut: number,
+    zOut: WasmPtr
+  ) => SQLiteResultCode;
+
+  // ===== FILE I/O METHODS =====
+
+  /**
+   * Close a file
+   *
+   * @param pFile - File handle from xOpen
+   * @returns SQLite result code
+   */
+  xClose: (pFile: SQLite3File) => SQLiteResultCode;
+
+  /**
+   * Read data from file
+   *
+   * @param pFile - File handle
+   * @param pBuf - Pointer to buffer for data
+   * @param iAmt - Number of bytes to read
+   * @param iOfst - Offset in file to start reading
+   * @returns SQLite result code
+   */
+  xRead: (
+    pFile: SQLite3File,
+    pBuf: WasmPtr,
+    iAmt: number,
+    iOfst: SQLiteInt64
+  ) => SQLiteResultCode;
+
+  /**
+   * Write data to file
+   *
+   * @param pFile - File handle
+   * @param pBuf - Pointer to data to write
+   * @param iAmt - Number of bytes to write
+   * @param iOfst - Offset in file to start writing
+   * @returns SQLite result code
+   */
+  xWrite: (
+    pFile: SQLite3File,
+    pBuf: WasmPtr,
+    iAmt: number,
+    iOfst: SQLiteInt64
+  ) => SQLiteResultCode;
+
+  /**
+   * Truncate file to specified size
+   *
+   * @param pFile - File handle
+   * @param size - New file size in bytes
+   * @returns SQLite result code
+   */
+  xTruncate: (pFile: SQLite3File, size: SQLiteInt64) => SQLiteResultCode;
+
+  /**
+   * Sync file data to storage
+   *
+   * @param pFile - File handle
+   * @param flags - SQLITE_SYNC_* flags controlling sync behavior
+   * @returns SQLite result code
+   */
+  xSync: (pFile: SQLite3File, flags: SQLiteSyncFlag) => SQLiteResultCode;
+
+  /**
+   * Get current file size
+   *
+   * @param pFile - File handle
+   * @param pSize - Pointer to receive file size
+   * @returns SQLite result code
+   */
+  xFileSize: (pFile: SQLite3File, pSize: WasmPtr) => SQLiteResultCode;
+
+  // ===== FILE LOCKING METHODS =====
+
+  /**
+   * Acquire a lock on the file
+   *
+   * @param pFile - File handle
+   * @param eLock - Lock level to acquire
+   * @returns SQLite result code
+   */
+  xLock: (pFile: SQLite3File, eLock: SQLiteLockLevel) => SQLiteResultCode;
+
+  /**
+   * Release a lock on the file
+   *
+   * @param pFile - File handle
+   * @param eLock - Lock level to release to
+   * @returns SQLite result code
+   */
+  xUnlock: (pFile: SQLite3File, eLock: SQLiteLockLevel) => SQLiteResultCode;
+
+  /**
+   * Check if another process holds a reserved lock
+   *
+   * @param pFile - File handle
+   * @param pResOut - Pointer to receive result (0 or non-zero)
+   * @returns SQLite result code
+   */
+  xCheckReservedLock: (
+    pFile: SQLite3File,
+    pResOut: WasmPtr
+  ) => SQLiteResultCode;
+
+  // ===== ADVANCED METHODS =====
+
+  /**
+   * File control operation for custom commands
+   *
+   * @param pFile - File handle
+   * @param op - Operation code
+   * @param pArg - Operation-specific argument
+   * @returns SQLite result code
+   */
+  xFileControl: (
+    pFile: SQLite3File,
+    op: number,
+    pArg: WasmPtr
+  ) => SQLiteResultCode;
+
+  /**
+   * Get the sector size for atomic writes
+   *
+   * @param pFile - File handle
+   * @returns Sector size in bytes
+   */
+  xSectorSize: (pFile: SQLite3File) => number;
+
+  /**
+   * Get device characteristics bitmask
+   *
+   * @param pFile - File handle
+   * @returns Bitmask of SQLITE_IOCAP_* flags
+   */
+  xDeviceCharacteristics: (pFile: SQLite3File) => number;
+}
+
+export interface WasmMemoryInterface {
+  // This will be properly defined in sqlite3.d.ts
+  ptrSizeof: number;
+  ptrIR: string;
+  // Add minimal interface needed for wasi.ts
+}
 
 /**
  * MAIN TYPE DEFINITIONS BELOW
@@ -114,7 +381,7 @@ export declare interface SQLite3Module {
    *
    * @returns Pointer to UTF-8 encoded version string (e.g., "3.45.0")
    */
-  _sqlite3_libversion: () => string;
+  _sqlite3_libversion: () => WasmPtr;
 
   /**
    * Get the SQLite library version number
@@ -123,7 +390,7 @@ export declare interface SQLite3Module {
    *
    * @returns Version number (e.g., 3045000 for version 3.45.0)
    */
-  _sqlite3_libversion_number: () => string;
+  _sqlite3_libversion_number: () => number;
 
   /**
    * Open a SQLite database connection
@@ -140,6 +407,15 @@ export declare interface SQLite3Module {
    * ```
    */
   _sqlite3_open: (filename: WasmPtr, ppDb: WasmPtr) => SQLiteResultCode;
+
+  /**
+   * Open a SQLite database connection with UTF-16 filename
+   *
+   * @param filename - Pointer to UTF-16 encoded database filename
+   * @param ppDb - Pointer to store the database connection pointer
+   * @returns SQLite result code (SQLITE_OK on success)
+   */
+  _sqlite3_open16: (filename: WasmPtr, ppDb: WasmPtr) => SQLiteResultCode;
 
   /**
    * Open a SQLite database connection with advanced options
@@ -160,11 +436,20 @@ export declare interface SQLite3Module {
   /**
    * Close a SQLite database connection
    *
+   * @param db - Database connection pointer
+   * @returns SQLite result code (SQLITE_OK on success, SQLITE_BUSY if unfinalized statements exist)
+   */
+  _sqlite3_close: (db: SQLite3Db) => SQLiteResultCode;
+
+  /**
+   * Close a SQLite database connection (v2)
+   *
    * This function closes the database and finalizes any prepared statements.
    * Use _sqlite3_close_v2 instead of _sqlite3_close for better resource cleanup.
+   * Always returns SQLITE_OK, marks connection as 'zombie' if unfinalized resources exist.
    *
    * @param db - Database connection pointer
-   * @returns SQLite result code (SQLITE_OK on success)
+   * @returns SQLite result code (always SQLITE_OK)
    */
   _sqlite3_close_v2: (db: SQLite3Db) => SQLiteResultCode;
 
@@ -184,15 +469,31 @@ export declare interface SQLite3Module {
   _sqlite3_exec: (
     db: SQLite3Db,
     sql: WasmPtr,
-    callback: SQLite3BusyHandlerCallback,
+    callback: WasmPtr,
     callbackArg: WasmPtr,
     errmsg: WasmPtr
   ) => SQLiteResultCode;
 
   /**
-   * Prepare a SQL statement for execution
+   * Prepare a SQL statement for execution (legacy)
    *
-   * Compiles SQL text into a prepared statement that can be executed multiple times.
+   * @param db - Database connection pointer
+   * @param sql - Pointer to UTF-8 encoded SQL statement
+   * @param nByte - Length of SQL in bytes, or -1 for null-terminated
+   * @param ppStmt - Pointer to store the prepared statement pointer
+   * @param pzTail - Pointer to store pointer to unused SQL text
+   * @returns SQLite result code (SQLITE_OK on success)
+   */
+  _sqlite3_prepare: (
+    db: SQLite3Db,
+    sql: WasmPtr,
+    nByte: number,
+    ppStmt: WasmPtr,
+    pzTail: WasmPtr
+  ) => SQLiteResultCode;
+
+  /**
+   * Prepare a SQL statement for execution (preferred)
    *
    * @param db - Database connection pointer
    * @param sql - Pointer to UTF-8 encoded SQL statement
@@ -217,12 +518,68 @@ export declare interface SQLite3Module {
    * @param db - Database connection pointer
    * @param sql - Pointer to UTF-8 encoded SQL statement
    * @param nByte - Length of SQL in bytes, or -1 for null-terminated
-   * @param prepFlags - Preparation flags (currently must be 0)
+   * @param prepFlags - Preparation flags (SQLITE_PREPARE_* constants)
    * @param ppStmt - Pointer to store the prepared statement pointer
    * @param pzTail - Pointer to store pointer to unused SQL text
    * @returns SQLite result code (SQLITE_OK on success)
    */
   _sqlite3_prepare_v3: (
+    db: SQLite3Db,
+    sql: WasmPtr,
+    nByte: number,
+    prepFlags: number,
+    ppStmt: WasmPtr,
+    pzTail: WasmPtr
+  ) => SQLiteResultCode;
+
+  /**
+   * Prepare a SQL statement with UTF-16 encoding (legacy)
+   *
+   * @param db - Database connection pointer
+   * @param sql - Pointer to UTF-16 encoded SQL statement
+   * @param nByte - Length of SQL in bytes, or -1 for null-terminated
+   * @param ppStmt - Pointer to store the prepared statement pointer
+   * @param pzTail - Pointer to store pointer to unused SQL text
+   * @returns SQLite result code (SQLITE_OK on success)
+   */
+  _sqlite3_prepare16: (
+    db: SQLite3Db,
+    sql: WasmPtr,
+    nByte: number,
+    ppStmt: WasmPtr,
+    pzTail: WasmPtr
+  ) => SQLiteResultCode;
+
+  /**
+   * Prepare a SQL statement with UTF-16 encoding (preferred)
+   *
+   * @param db - Database connection pointer
+   * @param sql - Pointer to UTF-16 encoded SQL statement
+   * @param nByte - Length of SQL in bytes, or -1 for null-terminated
+   * @param ppStmt - Pointer to store the prepared statement pointer
+   * @param pzTail - Pointer to store pointer to unused SQL text
+   * @returns SQLite result code (SQLITE_OK on success)
+   */
+  _sqlite3_prepare16_v2: (
+    db: SQLite3Db,
+    sql: WasmPtr,
+    nByte: number,
+    ppStmt: WasmPtr,
+    pzTail: WasmPtr
+  ) => SQLiteResultCode;
+
+  /**
+   * Prepare a SQL statement with UTF-16 encoding and additional flags
+   *
+   * @param db - Database connection pointer
+   * @param sql - Pointer to UTF-16 encoded SQL statement
+   * @param nByte - Length of SQL in bytes, or -1 for null-terminated
+   * @param prepFlags - Preparation flags (SQLITE_PREPARE_* constants)
+   * @param ppStmt - Pointer to store the prepared statement pointer
+   * @param pzTail - Pointer to store pointer to unused SQL text
+   * @returns SQLite result code (SQLITE_OK on success)
+   */
+  _sqlite3_prepare16_v3: (
     db: SQLite3Db,
     sql: WasmPtr,
     nByte: number,
@@ -330,7 +687,8 @@ export declare interface SQLite3Module {
   /**
    * Bind a 64-bit integer value to a prepared statement parameter
    *
-   * Note: The WebAssembly module uses JavaScript numbers instead of BigInt
+   * Note: WebAssembly uses JavaScript numbers for 64-bit integers.
+   * Values beyond Number.MAX_SAFE_INTEGER may lose precision.
    *
    * @param stmt - Prepared statement pointer
    * @param index - Parameter index (1-based)
@@ -402,11 +760,11 @@ export declare interface SQLite3Module {
    * Get the name of a parameter by its index
    *
    * For named parameters (like :name or @name), returns the parameter name.
-   * For positional parameters (?), returns null.
+   * For positional parameters (?), returns 0.
    *
    * @param stmt - Prepared statement pointer
    * @param index - Parameter index (1-based)
-   * @returns Pointer to parameter name or null if positional parameter
+   * @returns Pointer to parameter name (>0) or 0 if positional parameter
    */
   _sqlite3_bind_parameter_name: (stmt: SQLite3Stmt, index: number) => WasmPtr;
 
@@ -418,6 +776,104 @@ export declare interface SQLite3Module {
    * @returns Parameter index (1-based) or 0 if not found
    */
   _sqlite3_bind_parameter_index: (stmt: SQLite3Stmt, name: WasmPtr) => number;
+
+  /**
+   * Bind a large BLOB value to a prepared statement parameter (64-bit version)
+   *
+   * @param stmt - Prepared statement pointer
+   * @param index - Parameter index (1-based)
+   * @param value - Pointer to BLOB data
+   * @param n - Number of bytes in the BLOB (64-bit)
+   * @param destroy - Destructor function pointer (SQLITE_TRANSIENT, SQLITE_STATIC, or custom)
+   * @returns SQLite result code (SQLITE_OK on success)
+   */
+  _sqlite3_bind_blob64: (
+    stmt: SQLite3Stmt,
+    index: number,
+    value: WasmPtr,
+    n: number,
+    destroy: WasmPtr
+  ) => SQLiteResultCode;
+
+  /**
+   * Bind a UTF-16 text value to a prepared statement parameter
+   *
+   * @param stmt - Prepared statement pointer
+   * @param index - Parameter index (1-based)
+   * @param value - Pointer to UTF-16 encoded text
+   * @param n - Number of bytes in text (or -1 for null-terminated)
+   * @param destroy - Destructor function pointer (SQLITE_TRANSIENT, SQLITE_STATIC, or custom)
+   * @returns SQLite result code (SQLITE_OK on success)
+   */
+  _sqlite3_bind_text16: (
+    stmt: SQLite3Stmt,
+    index: number,
+    value: WasmPtr,
+    n: number,
+    destroy: WasmPtr
+  ) => SQLiteResultCode;
+
+  /**
+   * Bind a text value with explicit encoding to a prepared statement parameter (64-bit version)
+   *
+   * @param stmt - Prepared statement pointer
+   * @param index - Parameter index (1-based)
+   * @param value - Pointer to text data
+   * @param n - Number of bytes in text (64-bit, or -1 for null-terminated)
+   * @param destroy - Destructor function pointer (SQLITE_TRANSIENT, SQLITE_STATIC, or custom)
+   * @param encoding - Text encoding (SQLITE_UTF8, SQLITE_UTF16, etc.)
+   * @returns SQLite result code (SQLITE_OK on success)
+   */
+  _sqlite3_bind_text64: (
+    stmt: SQLite3Stmt,
+    index: number,
+    value: WasmPtr,
+    n: number,
+    destroy: WasmPtr,
+    encoding: number
+  ) => SQLiteResultCode;
+
+  /**
+   * Bind a sqlite3_value object to a prepared statement parameter
+   *
+   * @param stmt - Prepared statement pointer
+   * @param index - Parameter index (1-based)
+   * @param value - Pointer to sqlite3_value object
+   * @returns SQLite result code (SQLITE_OK on success)
+   */
+  _sqlite3_bind_value: (
+    stmt: SQLite3Stmt,
+    index: number,
+    value: WasmPtr
+  ) => SQLiteResultCode;
+
+  /**
+   * Bind a zero-filled BLOB to a prepared statement parameter
+   *
+   * @param stmt - Prepared statement pointer
+   * @param index - Parameter index (1-based)
+   * @param n - Size of the zero-filled BLOB in bytes
+   * @returns SQLite result code (SQLITE_OK on success)
+   */
+  _sqlite3_bind_zeroblob: (
+    stmt: SQLite3Stmt,
+    index: number,
+    n: number
+  ) => SQLiteResultCode;
+
+  /**
+   * Bind a large zero-filled BLOB to a prepared statement parameter (64-bit version)
+   *
+   * @param stmt - Prepared statement pointer
+   * @param index - Parameter index (1-based)
+   * @param n - Size of the zero-filled BLOB in bytes (64-bit)
+   * @returns SQLite result code (SQLITE_OK on success)
+   */
+  _sqlite3_bind_zeroblob64: (
+    stmt: SQLite3Stmt,
+    index: number,
+    n: number
+  ) => SQLiteResultCode;
 
   /**
    * Clear all parameter bindings from a prepared statement
@@ -502,7 +958,8 @@ export declare interface SQLite3Module {
   /**
    * Get a 64-bit integer value from a column
    *
-   * Note: The WebAssembly module returns this as a JavaScript number, not BigInt
+   * Note: WebAssembly returns 64-bit integers as JavaScript numbers.
+   * Values beyond Number.MAX_SAFE_INTEGER may lose precision.
    *
    * @param stmt - Prepared statement pointer
    * @param index - Column index (0-based)
@@ -542,6 +999,105 @@ export declare interface SQLite3Module {
    * @returns Pointer to declared type name (const char*)
    */
   _sqlite3_column_decltype: (stmt: SQLite3Stmt, index: number) => WasmPtr;
+
+  /**
+   * Get the number of bytes in a column value (UTF-16 version)
+   *
+   * For BLOB and TEXT columns, returns the size in bytes using UTF-16 encoding.
+   * For other types, the return value has different meanings.
+   *
+   * @param stmt - Prepared statement pointer
+   * @param index - Column index (0-based)
+   * @returns Number of bytes in the column value (UTF-16)
+   */
+  _sqlite3_column_bytes16: (stmt: SQLite3Stmt, index: number) => number;
+
+  /**
+   * Get UTF-16 text data from a column
+   *
+   * @param stmt - Prepared statement pointer
+   * @param index - Column index (0-based)
+   * @returns Pointer to UTF-16 text (const void*)
+   */
+  _sqlite3_column_text16: (stmt: SQLite3Stmt, index: number) => WasmPtr;
+
+  /**
+   * Get the name of a column by index (UTF-16 version)
+   *
+   * @param stmt - Prepared statement pointer
+   * @param index - Column index (0-based)
+   * @returns Pointer to column name in UTF-16 (const void*)
+   */
+  _sqlite3_column_name16: (stmt: SQLite3Stmt, index: number) => WasmPtr;
+
+  /**
+   * Get the declared data type of a column (UTF-16 version)
+   *
+   * Returns the data type as declared in the CREATE TABLE statement,
+   * or the actual data type if no type was declared.
+   *
+   * @param stmt - Prepared statement pointer
+   * @param index - Column index (0-based)
+   * @returns Pointer to declared type name in UTF-16 (const void*)
+   */
+  _sqlite3_column_decltype16: (stmt: SQLite3Stmt, index: number) => WasmPtr;
+
+  /**
+   * Get the name of the database for a column
+   *
+   * @param stmt - Prepared statement pointer
+   * @param index - Column index (0-based)
+   * @returns Pointer to database name (const char*)
+   */
+  _sqlite3_column_database_name: (stmt: SQLite3Stmt, index: number) => WasmPtr;
+
+  /**
+   * Get the name of the database for a column (UTF-16 version)
+   *
+   * @param stmt - Prepared statement pointer
+   * @param index - Column index (0-based)
+   * @returns Pointer to database name in UTF-16 (const void*)
+   */
+  _sqlite3_column_database_name16: (
+    stmt: SQLite3Stmt,
+    index: number
+  ) => WasmPtr;
+
+  /**
+   * Get the name of the table for a column
+   *
+   * @param stmt - Prepared statement pointer
+   * @param index - Column index (0-based)
+   * @returns Pointer to table name (const char*)
+   */
+  _sqlite3_column_table_name: (stmt: SQLite3Stmt, index: number) => WasmPtr;
+
+  /**
+   * Get the name of the table for a column (UTF-16 version)
+   *
+   * @param stmt - Prepared statement pointer
+   * @param index - Column index (0-based)
+   * @returns Pointer to table name in UTF-16 (const void*)
+   */
+  _sqlite3_column_table_name16: (stmt: SQLite3Stmt, index: number) => WasmPtr;
+
+  /**
+   * Get the origin name of a column
+   *
+   * @param stmt - Prepared statement pointer
+   * @param index - Column index (0-based)
+   * @returns Pointer to origin column name (const char*)
+   */
+  _sqlite3_column_origin_name: (stmt: SQLite3Stmt, index: number) => WasmPtr;
+
+  /**
+   * Get the origin name of a column (UTF-16 version)
+   *
+   * @param stmt - Prepared statement pointer
+   * @param index - Column index (0-based)
+   * @returns Pointer to origin column name in UTF-16 (const void*)
+   */
+  _sqlite3_column_origin_name16: (stmt: SQLite3Stmt, index: number) => WasmPtr;
 
   /**
    * Get the number of columns in the current row
@@ -607,6 +1163,48 @@ export declare interface SQLite3Module {
    * @returns Pointer to UTF-8 text
    */
   _sqlite3_value_text: (value: number) => number;
+
+  /**
+   * Get the number of bytes in a sqlite3_value (UTF-16 version)
+   *
+   * For BLOB and TEXT values, returns the size in bytes using UTF-16 encoding.
+   *
+   * @param value - sqlite3_value pointer
+   * @returns Number of bytes in the value (UTF-16)
+   */
+  _sqlite3_value_bytes16: (value: number) => number;
+
+  /**
+   * Get UTF-16 text data from a sqlite3_value
+   *
+   * @param value - sqlite3_value pointer
+   * @returns Pointer to UTF-16 text
+   */
+  _sqlite3_value_text16: (value: number) => number;
+
+  /**
+   * Get UTF-16 Little Endian text data from a sqlite3_value
+   *
+   * @param value - sqlite3_value pointer
+   * @returns Pointer to UTF-16LE text
+   */
+  _sqlite3_value_text16le: (value: number) => number;
+
+  /**
+   * Get UTF-16 Big Endian text data from a sqlite3_value
+   *
+   * @param value - sqlite3_value pointer
+   * @returns Pointer to UTF-16BE text
+   */
+  _sqlite3_value_text16be: (value: number) => number;
+
+  /**
+   * Get the encoding of a sqlite3_value
+   *
+   * @param value - sqlite3_value pointer
+   * @returns Encoding constant (SQLITE_UTF8, SQLITE_UTF16, etc.)
+   */
+  _sqlite3_value_encoding: (value: number) => number;
 
   /**
    * Get the data type of a sqlite3_value
@@ -782,20 +1380,97 @@ export declare interface SQLite3Module {
   ) => void;
 
   /**
-   * Set a zero-filled BLOB result in a custom function
+   * Set a large BLOB result in a custom function (64-bit version)
    *
    * @param context - Function context pointer
-   * @param n - Number of bytes in the BLOB
+   * @param value - Pointer to BLOB data
+   * @param n - Number of bytes in BLOB (64-bit)
+   * @param destroy - Destructor function pointer
    */
-  _sqlite3_result_zeroblob: (context: number, n: number) => void;
+  _sqlite3_result_blob64: (
+    context: number,
+    value: number,
+    n: number,
+    destroy: number
+  ) => void;
 
   /**
-   * Set a 64-bit zero-filled BLOB result in a custom function
+   * Set a UTF-16 text result in a custom function
    *
    * @param context - Function context pointer
-   * @param n - Number of bytes in the BLOB (as JavaScript number)
+   * @param value - Pointer to UTF-16 text
+   * @param n - Length of text in bytes (or -1 for null-terminated)
+   * @param destroy - Destructor function pointer
    */
-  _sqlite3_result_zeroblob64: (context: number, n: number) => void;
+  _sqlite3_result_text16: (
+    context: number,
+    value: number,
+    n: number,
+    destroy: number
+  ) => void;
+
+  /**
+   * Set a UTF-16 Little Endian text result in a custom function
+   *
+   * @param context - Function context pointer
+   * @param value - Pointer to UTF-16LE text
+   * @param n - Length of text in bytes (or -1 for null-terminated)
+   * @param destroy - Destructor function pointer
+   */
+  _sqlite3_result_text16le: (
+    context: number,
+    value: number,
+    n: number,
+    destroy: number
+  ) => void;
+
+  /**
+   * Set a UTF-16 Big Endian text result in a custom function
+   *
+   * @param context - Function context pointer
+   * @param value - Pointer to UTF-16BE text
+   * @param n - Length of text in bytes (or -1 for null-terminated)
+   * @param destroy - Destructor function pointer
+   */
+  _sqlite3_result_text16be: (
+    context: number,
+    value: number,
+    n: number,
+    destroy: number
+  ) => void;
+
+  /**
+   * Set a text result with explicit encoding in a custom function (64-bit version)
+   *
+   * @param context - Function context pointer
+   * @param value - Pointer to text data
+   * @param n - Length of text in bytes (64-bit, or -1 for null-terminated)
+   * @param destroy - Destructor function pointer
+   * @param encoding - Text encoding (SQLITE_UTF8, SQLITE_UTF16, etc.)
+   */
+  _sqlite3_result_text64: (
+    context: number,
+    value: number,
+    n: number,
+    destroy: number,
+    encoding: number
+  ) => void;
+
+  /**
+   * Set a sqlite3_value result in a custom function
+   *
+   * @param context - Function context pointer
+   * @param value - sqlite3_value pointer to copy
+   */
+  _sqlite3_result_value: (context: number, value: number) => void;
+
+  /**
+   * Set a subtype for the result value in a custom function
+   *
+   * @param context - Function context pointer
+   * @param subtype - Subtype value
+   */
+  _sqlite3_result_subtype: (context: number, subtype: number) => void;
 
   /**
    * Set a pointer result in a custom function
@@ -815,14 +1490,20 @@ export declare interface SQLite3Module {
   ) => void;
 
   /**
-   * Set a subtype on a function result
-   *
-   * Used for custom subtypes in extensions.
+   * Set a zero-filled BLOB result in a custom function
    *
    * @param context - Function context pointer
-   * @param subtype - Subtype value
+   * @param n - Number of bytes in the BLOB
    */
-  _sqlite3_result_subtype: (context: number, subtype: number) => void;
+  _sqlite3_result_zeroblob: (context: number, n: number) => void;
+
+  /**
+   * Set a 64-bit zero-filled BLOB result in a custom function
+   *
+   * @param context - Function context pointer
+   * @param n - Number of bytes in the BLOB (as JavaScript number)
+   */
+  _sqlite3_result_zeroblob64: (context: number, n: number) => void;
 
   // Database Metadata and Operations
   // ===============================
@@ -905,7 +1586,11 @@ export declare interface SQLite3Module {
    * @param data - User data pointer passed to callback
    * @returns SQLite result code (SQLITE_OK on success)
    */
-  _sqlite3_busy_handler: (db: number, callback: number, data: number) => number;
+  _sqlite3_busy_handler: (
+    db: SQLite3Db,
+    callback: WasmPtr,
+    data: WasmPtr
+  ) => SQLiteResultCode;
 
   /**
    * Set a busy timeout
@@ -969,7 +1654,7 @@ export declare interface SQLite3Module {
    * @param db - Database connection pointer
    * @returns SQLite result code of the most recent error
    */
-  _sqlite3_errcode: (db: number) => number;
+  _sqlite3_errcode: (db: SQLite3Db) => SQLiteResultCode;
 
   /**
    * Get the most recent extended error code for a database connection
@@ -979,7 +1664,7 @@ export declare interface SQLite3Module {
    * @param db - Database connection pointer
    * @returns Extended SQLite result code
    */
-  _sqlite3_extended_errcode: (db: number) => number;
+  _sqlite3_extended_errcode: (db: SQLite3Db) => SQLiteResultCode;
 
   /**
    * Get the most recent error message for a database connection
@@ -987,7 +1672,7 @@ export declare interface SQLite3Module {
    * @param db - Database connection pointer
    * @returns Pointer to UTF-8 error message string
    */
-  _sqlite3_errmsg: (db: number) => number;
+  _sqlite3_errmsg: (db: SQLite3Db) => WasmPtr;
 
   /**
    * Get an error message for a specific SQLite result code
@@ -995,7 +1680,7 @@ export declare interface SQLite3Module {
    * @param code - SQLite result code
    * @returns Pointer to UTF-8 error message string
    */
-  _sqlite3_errstr: (code: number) => number;
+  _sqlite3_errstr: (code: SQLiteResultCode) => WasmPtr;
 
   /**
    * Get the byte offset of an error in SQL text
@@ -1013,55 +1698,142 @@ export declare interface SQLite3Module {
   /**
    * Allocate memory using SQLite's memory allocator
    *
-   * @param n - Number of bytes to allocate
-   * @returns Pointer to allocated memory, or null if allocation failed
+   * Allocates n bytes of memory using SQLite's internal memory allocator.
+   * The memory allocated by this function must be freed using _sqlite3_free().
+   *
+   * @param n - Number of bytes to allocate (must be > 0)
+   * @returns Pointer to allocated memory (>0), or 0 if allocation failed
+   *
+   * @example
+   * ```typescript
+   * const ptr = module._sqlite3_malloc(1024);
+   * if (ptr === 0) {
+   *   throw new Error("Out of memory");
+   * }
+   * // Use memory...
+   * module._sqlite3_free(ptr);
+   * ```
    */
-  _sqlite3_malloc: (n: number) => number;
+  _sqlite3_malloc: (n: number) => AllocPtr;
 
   /**
    * Allocate 64-bit memory using SQLite's memory allocator
    *
-   * Note: The WebAssembly module uses JavaScript numbers instead of BigInt
+   * Allocates n bytes of memory using SQLite's internal memory allocator with
+   * 64-bit size parameter support. The memory allocated by this function must
+   * be freed using _sqlite3_free().
    *
-   * @param n - Number of bytes to allocate (as JavaScript number)
-   * @returns Pointer to allocated memory, or null if allocation failed
+   * Note: Despite the name, WebAssembly uses JavaScript numbers instead of BigInt
+   * for size parameters due to WebAssembly limitations.
+   *
+   * @param n - Number of bytes to allocate (as JavaScript number, must be > 0)
+   * @returns Pointer to allocated memory (>0), or 0 if allocation failed
+   *
+   * @example
+   * ```typescript
+   * const ptr = module._sqlite3_malloc64(2048);
+   * if (ptr === 0) {
+   *   throw new Error("Out of memory");
+   * }
+   * // Use memory...
+   * module._sqlite3_free(ptr);
+   * ```
    */
-  _sqlite3_malloc64: (n: number) => number;
+  _sqlite3_malloc64: (n: number) => AllocPtr;
 
   /**
    * Reallocate memory using SQLite's memory allocator
    *
-   * @param old - Pointer to previously allocated memory
-   * @param n - New size in bytes
-   * @returns Pointer to reallocated memory, or null if reallocation failed
+   * Changes the size of the memory block pointed to by old to n bytes.
+   * If old is 0, this behaves like _sqlite3_malloc(n).
+   * If n is 0, this behaves like _sqlite3_free(old) and returns 0.
+   *
+   * @param old - Pointer to previously allocated memory (0 for new allocation)
+   * @param n - New size in bytes (0 to free memory)
+   * @returns Pointer to reallocated memory (>0), or 0 if reallocation failed
+   *
+   * @example
+   * ```typescript
+   * let ptr = module._sqlite3_malloc(512);
+   * if (ptr === 0) throw new Error("Initial allocation failed");
+   *
+   * ptr = module._sqlite3_realloc(ptr, 1024);
+   * if (ptr === 0) throw new Error("Reallocation failed");
+   *
+   * module._sqlite3_free(ptr);
+   * ```
    */
-  _sqlite3_realloc: (old: number, n: number) => number;
+  _sqlite3_realloc: (old: WasmPtr, n: number) => AllocPtr;
 
   /**
    * Reallocate 64-bit memory using SQLite's memory allocator
    *
-   * Note: The WebAssembly module uses JavaScript numbers instead of BigInt
+   * Changes the size of the memory block pointed to by old to n bytes.
+   * If old is 0, this behaves like _sqlite3_malloc64(n).
+   * If n is 0, this behaves like _sqlite3_free(old) and returns 0.
    *
-   * @param old - Pointer to previously allocated memory
-   * @param n - New size in bytes (as JavaScript number)
-   * @returns Pointer to reallocated memory, or null if reallocation failed
+   * Note: Despite the name, WebAssembly uses JavaScript numbers instead of BigInt
+   * for size parameters due to WebAssembly limitations.
+   *
+   * @param old - Pointer to previously allocated memory (0 for new allocation)
+   * @param n - New size in bytes (as JavaScript number, 0 to free memory)
+   * @returns Pointer to reallocated memory (>0), or 0 if reallocation failed
+   *
+   * @example
+   * ```typescript
+   * let ptr = module._sqlite3_malloc64(512);
+   * if (ptr === 0) throw new Error("Initial allocation failed");
+   *
+   * ptr = module._sqlite3_realloc64(ptr, 2048);
+   * if (ptr === 0) throw new Error("Reallocation failed");
+   *
+   * module._sqlite3_free(ptr);
+   * ```
    */
-  _sqlite3_realloc64: (old: number, n: number) => number;
+  _sqlite3_realloc64: (old: WasmPtr, n: number) => AllocPtr;
 
   /**
    * Free memory allocated with SQLite's memory allocator
    *
-   * @param ptr - Pointer to memory to free
+   * Frees memory that was previously allocated with _sqlite3_malloc(),
+   * _sqlite3_malloc64(), _sqlite3_realloc(), or _sqlite3_realloc64().
+   *
+   * Passing 0 (null pointer) is safe and does nothing.
+   * Passing an invalid pointer results in undefined behavior.
+   *
+   * @param ptr - Pointer to memory to free (0 is safe and ignored)
+   *
+   * @example
+   * ```typescript
+   * const ptr = module._sqlite3_malloc(1024);
+   * if (ptr !== 0) {
+   *   // Use memory...
+   *   module._sqlite3_free(ptr);
+   * }
+   * ```
    */
-  _sqlite3_free: (ptr: number) => void;
+  _sqlite3_free: (ptr: WasmPtr) => void;
 
   /**
    * Get the size of a memory allocation
    *
-   * @param ptr - Pointer to memory allocated with sqlite3_malloc
-   * @returns Size of the memory allocation in bytes
+   * Returns the size of the memory allocation pointed to by ptr.
+   * The ptr must be a valid pointer returned by _sqlite3_malloc(),
+   * _sqlite3_malloc64(), _sqlite3_realloc(), or _sqlite3_realloc64().
+   *
+   * @param ptr - Pointer to memory allocated with SQLite allocator (must be valid, not 0)
+   * @returns Size of the memory allocation in bytes, or undefined behavior for invalid ptr
+   *
+   * @example
+   * ```typescript
+   * const ptr = module._sqlite3_malloc(1024);
+   * if (ptr !== 0) {
+   *   const size = module._sqlite3_msize(ptr); // Returns 1024 (or more)
+   *   module._sqlite3_free(ptr);
+   * }
+   * ```
    */
-  _sqlite3_msize: (ptr: number) => number;
+  _sqlite3_msize: (ptr: WasmPtr) => number;
 
   // Virtual File System (VFS) Operations
   // ====================================
@@ -1069,8 +1841,8 @@ export declare interface SQLite3Module {
   /**
    * Find a Virtual File System by name
    *
-   * @param zVfsName - Pointer to VFS name (or null for default)
-   * @returns VFS pointer or null if not found
+   * @param zVfsName - Pointer to VFS name (0 for default VFS)
+   * @returns VFS pointer (>0) or 0 if not found
    */
   _sqlite3_vfs_find: (zVfsName: number) => number;
 
@@ -1108,6 +1880,53 @@ export declare interface SQLite3Module {
     op: number,
     pArg: number
   ) => number;
+
+  // File I/O Utility Operations
+  // ===========================
+
+  /**
+   * Create a temporary file name
+   *
+   * @param db - Database connection pointer
+   * @param zBuf - Buffer to receive temporary filename
+   * @param nBuf - Size of buffer in bytes
+   * @param zDir - Directory for temporary file (null for default)
+   * @returns SQLite result code
+   */
+  _sqlite3_temp_filename: (
+    db: number,
+    zBuf: WasmPtr,
+    nBuf: number,
+    zDir: WasmPtr | null
+  ) => SQLiteResultCode;
+
+  /**
+   * Check if a file exists and is accessible
+   *
+   * @param zPath - Pointer to file path in UTF-8
+   * @param flags - Access flags (SQLITE_ACCESS_*)
+   * @param pResOut - Pointer to receive result (0 or non-zero)
+   * @returns SQLite result code
+   */
+  _sqlite3_access: (
+    zPath: WasmPtr,
+    flags: SQLiteAccessFlag,
+    pResOut: WasmPtr
+  ) => SQLiteResultCode;
+
+  /**
+   * Get full pathname from relative path
+   *
+   * @param zPath - Pointer to relative path
+   * @param nOut - Size of output buffer
+   * @param zOut - Pointer to output buffer for full path
+   * @returns SQLite result code
+   */
+  _sqlite3_fullpathname: (
+    zPath: WasmPtr,
+    nOut: number,
+    zOut: WasmPtr
+  ) => SQLiteResultCode;
 
   // Status and Configuration Operations
   // ===================================
@@ -1180,6 +1999,46 @@ export declare interface SQLite3Module {
    * @returns SQLite result code (SQLITE_OK on success)
    */
   _sqlite3_extended_result_codes: (db: number, onoff: number) => number;
+
+  // Configuration Operations
+  // ========================
+
+  /**
+   * Configure SQLite library-wide options
+   *
+   * @param option - Configuration option (SQLITE_CONFIG_*)
+   * @param ... - Variable arguments depending on option
+   * @returns SQLite result code (SQLITE_OK on success)
+   */
+  _sqlite3_config: (option: number, ...args: number[]) => SQLiteResultCode;
+
+  /**
+   * Configure database-specific options
+   *
+   * @param db - Database connection pointer
+   * @param op - Configuration option (SQLITE_DBCONFIG_*)
+   * @param ... - Variable arguments depending on option
+   * @returns SQLite result code (SQLITE_OK on success)
+   */
+  _sqlite3_db_config: (
+    db: SQLite3Db,
+    op: number,
+    ...args: number[]
+  ) => SQLiteResultCode;
+
+  /**
+   * Initialize SQLite library
+   *
+   * @returns SQLite result code (SQLITE_OK on success)
+   */
+  _sqlite3_initialize: () => SQLiteResultCode;
+
+  /**
+   * Shutdown SQLite library
+   *
+   * @returns SQLite result code (SQLITE_OK on success)
+   */
+  _sqlite3_shutdown: () => SQLiteResultCode;
 
   // Custom Function Creation Operations
   // ==================================
@@ -1459,40 +2318,126 @@ export declare interface SQLite3Module {
   // ===========================================
 
   /**
+   * Initialize a database backup operation
+   *
+   * @param pDest - Destination database connection
+   * @param zDestName - Pointer to destination database name (usually "main")
+   * @param pSource - Source database connection
+   * @param zSourceName - Pointer to source database name (usually "main")
+   * @returns Backup handle pointer, or 0 on error
+   */
+  _sqlite3_backup_init: (
+    pDest: SQLite3Db,
+    zDestName: WasmPtr,
+    pSource: SQLite3Db,
+    zSourceName: WasmPtr
+  ) => WasmPtr;
+
+  /**
+   * Copy database pages during backup
+   *
+   * @param p - Backup handle returned by sqlite3_backup_init
+   * @param nPage - Number of pages to copy (-1 to copy all remaining pages)
+   * @returns SQLITE_OK, SQLITE_DONE, or error code
+   */
+  _sqlite3_backup_step: (p: WasmPtr, nPage: number) => SQLiteResultCode;
+
+  /**
+   * Finish a backup operation and release resources
+   *
+   * @param p - Backup handle returned by sqlite3_backup_init
+   * @returns Final result code from the backup operation
+   */
+  _sqlite3_backup_finish: (p: WasmPtr) => SQLiteResultCode;
+
+  /**
+   * Get the number of pages remaining to be backed up
+   *
+   * @param p - Backup handle returned by sqlite3_backup_init
+   * @returns Number of pages still to be backed up
+   */
+  _sqlite3_backup_remaining: (p: WasmPtr) => number;
+
+  /**
+   * Get the total number of pages in the source database
+   *
+   * @param p - Backup handle returned by sqlite3_backup_init
+   * @returns Total number of pages in source database
+   */
+  _sqlite3_backup_pagecount: (p: WasmPtr) => number;
+
+  /**
    * Serialize a database into memory
    *
+   * The sqlite3_serialize() interface returns a pointer to memory that is a
+   * serialization of the S database on database connection D. If P is not NULL,
+   * then the size of the database in bytes is written into *P.
+   *
    * @param db - Database connection pointer
-   * @param zSchema - Pointer to schema name (main, temp, etc.)
-   * @param piSize - Pointer to store the size of serialized database
-   * @param mFlags - Serialization flags
-   * @returns Pointer to serialized database data
+   * @param zSchema - Pointer to schema name string ("main", "temp", or attached DB name)
+   * @param ppData - Pointer to receive pointer to serialized data (output parameter)
+   * @param pSize - Pointer to receive size of serialized data in bytes (output parameter)
+   * @param mFlags - Serialization flags (SQLITE_SERIALIZE_*)
+   * @returns SQLite result code (SQLITE_OK on success)
+   *
+   * @example
+   * ```typescript
+   * const dataPtr = module._malloc(8); // For data pointer
+   * const sizePtr = module._malloc(8); // For size
+   * const result = module._sqlite3_serialize(db, schemaNamePtr, dataPtr, sizePtr, 0);
+   * if (result === SQLITE_OK) {
+   *   const serializedDataPtr = module.getValue(dataPtr, "*");
+   *   const size = module.getValue(sizePtr, "i64");
+   *   // Use serialized data...
+   * }
+   * ```
    */
   _sqlite3_serialize: (
-    db: number,
-    zSchema: number,
-    piSize: number,
+    db: SQLite3Db,
+    zSchema: WasmPtr,
+    ppData: WasmPtr,
+    pSize: WasmPtr,
     mFlags: number
-  ) => number;
+  ) => SQLiteResultCode;
 
   /**
    * Deserialize a database from memory
    *
+   * The sqlite3_deserialize() interface causes the database connection D to
+   * disconnect from database S and then reopen S as an in-memory database based
+   * on the serialization contained in P.
+   *
    * @param db - Database connection pointer
-   * @param zSchema - Pointer to schema name (main, temp, etc.)
-   * @param pData - Pointer to serialized database data
-   * @param szData - Size of the data in bytes
-   * @param szBuf - Size of the buffer
-   * @param mFlags - Deserialization flags
+   * @param zSchema - Pointer to schema name string ("main", "temp", or attached DB name)
+   * @param pData - Pointer to serialized database content
+   * @param szDb - Number of bytes in the serialized database (actual data size)
+   * @param szBuf - Total size of buffer pData[] (may be larger than szDb)
+   * @param mFlags - Deserialization flags (SQLITE_DESERIALIZE_*)
    * @returns SQLite result code (SQLITE_OK on success)
+   *
+   * @example
+   * ```typescript
+   * const result = module._sqlite3_deserialize(
+   *   db,
+   *   schemaNamePtr,
+   *   serializedDataPtr,
+   *   actualDataSize,
+   *   bufferSize,
+   *   SQLITE_DESERIALIZE_FREEONCLOSE
+   * );
+   * if (result === SQLITE_OK) {
+   *   // Database successfully deserialized
+   * }
+   * ```
    */
   _sqlite3_deserialize: (
-    db: number,
-    zSchema: number,
-    pData: number,
-    szData: number,
-    szBuf: number,
+    db: SQLite3Db,
+    zSchema: WasmPtr,
+    pData: WasmPtr,
+    szDb: SQLiteInt64,
+    szBuf: SQLiteInt64,
     mFlags: number
-  ) => number; // Note: parameters are numbers, not bigints
+  ) => SQLiteResultCode;
 
   // Random Number Generation
   // ========================
@@ -1513,7 +2458,7 @@ export declare interface SQLite3Module {
    *
    * @param zFilename - Pointer to database filename URI
    * @param zParam - Pointer to parameter name
-   * @returns Pointer to parameter value, or null if not found
+   * @returns Pointer to parameter value (>0), or 0 if not found
    */
   _sqlite3_uri_parameter: (zFilename: number, zParam: number) => number;
 
@@ -1550,7 +2495,7 @@ export declare interface SQLite3Module {
    *
    * @param zFilename - Pointer to database filename URI
    * @param n - Parameter index (0-based)
-   * @returns Pointer to parameter name, or null if not found
+   * @returns Pointer to parameter name (>0), or 0 if not found
    */
   _sqlite3_uri_key: (zFilename: number, n: number) => number;
 
@@ -1634,21 +2579,7 @@ export declare interface SQLite3Module {
    *
    * @returns Pointer to source identifier string
    */
-  _sqlite3_sourceid: () => string;
-
-  /**
-   * Initialize SQLite library
-   *
-   * @returns SQLite result code (SQLITE_OK on success)
-   */
-  _sqlite3_initialize: () => number;
-
-  /**
-   * Shutdown SQLite library
-   *
-   * @returns SQLite result code (SQLITE_OK on success)
-   */
-  _sqlite3_shutdown: () => number;
+  _sqlite3_sourceid: () => WasmPtr;
 
   // SQLite Hooks and Callbacks
   // ==========================
@@ -2530,7 +3461,7 @@ export declare interface SQLite3Module {
    *
    * @param ctx - Function context pointer
    * @param n - Auxiliary data index
-   * @returns Pointer to auxiliary data, or null if not found
+   * @returns Pointer to auxiliary data (>0), or 0 if not found
    */
   _sqlite3_get_auxdata: (ctx: number, n: number) => number;
 
@@ -2633,9 +3564,9 @@ export declare interface SQLite3Module {
    * Get compile option by index
    *
    * @param n - Compile option index
-   * @returns Pointer to compile option name
+   * @returns Pointer to compile option name (>0), or 0 if index is out of range
    */
-  _sqlite3_compileoption_get: number; // This is actually a property, not a function
+  _sqlite3_compileoption_get: (n: number) => WasmPtr;
 
   // WASM initialization
   ___wasm_call_ctors: () => void;
